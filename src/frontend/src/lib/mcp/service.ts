@@ -10,9 +10,12 @@
 
 import {
   CALCULATOR_VERSION,
+  CONDITION_TIERS,
+  MORTGAGE_PAYOFF_MODES,
   PROFESSIONAL_REVIEW_DOMAINS,
   PROVENANCE_STATES,
   SCENARIO_DEFAULT_SPREAD,
+  SECTION_121_STATUSES,
   SELLER_NET_CONFIG,
   calculateSellerNetWaterfall,
   computeScenarios,
@@ -192,11 +195,76 @@ export interface McpService {
 // Static descriptors
 // ─────────────────────────────────────────────────────────────────────────────
 
+const PROVENANCED_NUMBER_SCHEMA: McpJsonSchema = {
+  type: "object",
+  properties: {
+    value: {
+      type: ["number", "null"],
+      description: "Numeric value, or null when provenance is UNKNOWN.",
+    },
+    provenance: {
+      type: "string",
+      enum: PROVENANCE_STATES,
+    },
+  },
+  required: ["value", "provenance"],
+  additionalProperties: false,
+};
+
+const PROVENANCED_FIELDS = [
+  "basePrice",
+  "manualAdjustedPrice",
+  "listingCommissionRateBps",
+  "buyerCommissionRateBps",
+  "escrowRateBps",
+  "titleRateBps",
+  "transferTaxRateBps",
+  "recordingFees",
+  "homeWarranty",
+  "annualPropertyTax",
+  "taxDaysElapsed",
+  "mortgageBalance",
+  "mortgageRateBps",
+  "mortgageMonthsRemaining",
+  "hoaPayoff",
+  "liensJudgments",
+  "stagingPhotoCost",
+  "sellerConcessionsToBuyer",
+  "repairsCost",
+  "renovationCost",
+  "hecmInitialBalance",
+  "hecmCurrentRateBps",
+  "hecmLifetimeCapBps",
+  "hecmMonthsElapsed",
+  "originalPurchasePrice",
+  "capitalImprovements",
+  "estimatedCapitalGainsTaxRateBps",
+  "monthlyCarryingCost",
+  "pctExpectedDom",
+  "pctExpectedDiscountPct",
+] as const;
+
 const INPUT_SCHEMA: McpJsonSchema = {
   type: "object",
   description:
-    "Canonical SellerNetInput. Every field is required; use UNKNOWN.",
-  additionalProperties: true,
+    "Canonical SellerNetInput. UNKNOWN is represented by { value: null, provenance: 'UNKNOWN' }; explicit zero remains numeric 0.",
+  properties: {
+    ...Object.fromEntries(
+      PROVENANCED_FIELDS.map((field) => [field, PROVENANCED_NUMBER_SCHEMA]),
+    ),
+    conditionTier: { type: "string", enum: CONDITION_TIERS },
+    mortgagePayoffMode: { type: "string", enum: MORTGAGE_PAYOFF_MODES },
+    isHecm: { type: "boolean" },
+    section121Status: { type: "string", enum: SECTION_121_STATUSES },
+  },
+  required: [
+    ...PROVENANCED_FIELDS,
+    "conditionTier",
+    "mortgagePayoffMode",
+    "isHecm",
+    "section121Status",
+  ],
+  additionalProperties: false,
 };
 
 const RESULT_SCHEMA: McpJsonSchema = {
@@ -443,45 +511,70 @@ function isBoundedJson(value: unknown): boolean {
  * guard only — it never validates financial semantics; the canonical validator
  * owns that.
  */
+function isProvenancedNumber(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  const keys = Object.keys(value);
+  if (
+    keys.some((key) => key !== "value" && key !== "provenance") ||
+    !("value" in value) ||
+    !("provenance" in value)
+  ) {
+    return false;
+  }
+  const rawValue = value.value;
+  if (
+    rawValue !== null &&
+    (typeof rawValue !== "number" || !Number.isFinite(rawValue))
+  ) {
+    return false;
+  }
+  return (
+    typeof value.provenance === "string" &&
+    (PROVENANCE_STATES as readonly string[]).includes(value.provenance)
+  );
+}
+
 function isSellerNetInput(value: unknown): value is SellerNetInput {
   if (!isRecord(value)) return false;
-  const required = [
-    "basePrice",
-    "manualAdjustedPrice",
+
+  const allowed = new Set<string>([
+    ...PROVENANCED_FIELDS,
     "conditionTier",
-    "listingCommissionRateBps",
-    "buyerCommissionRateBps",
-    "escrowRateBps",
-    "titleRateBps",
-    "transferTaxRateBps",
-    "recordingFees",
-    "homeWarranty",
-    "annualPropertyTax",
-    "taxDaysElapsed",
-    "mortgageBalance",
-    "mortgageRateBps",
-    "mortgageMonthsRemaining",
     "mortgagePayoffMode",
-    "hoaPayoff",
-    "liensJudgments",
-    "stagingPhotoCost",
-    "sellerConcessionsToBuyer",
-    "repairsCost",
-    "renovationCost",
     "isHecm",
-    "hecmInitialBalance",
-    "hecmCurrentRateBps",
-    "hecmLifetimeCapBps",
-    "hecmMonthsElapsed",
-    "originalPurchasePrice",
-    "capitalImprovements",
     "section121Status",
-    "estimatedCapitalGainsTaxRateBps",
-    "monthlyCarryingCost",
-    "pctExpectedDom",
-    "pctExpectedDiscountPct",
-  ];
-  return required.every((key) => key in value);
+  ]);
+  if (Object.keys(value).some((key) => !allowed.has(key))) return false;
+
+  for (const key of PROVENANCED_FIELDS) {
+    if (!(key in value) || !isProvenancedNumber(value[key])) return false;
+  }
+
+  if (
+    typeof value.conditionTier !== "string" ||
+    !(CONDITION_TIERS as readonly string[]).includes(value.conditionTier)
+  ) {
+    return false;
+  }
+  if (
+    typeof value.mortgagePayoffMode !== "string" ||
+    !(MORTGAGE_PAYOFF_MODES as readonly string[]).includes(
+      value.mortgagePayoffMode,
+    )
+  ) {
+    return false;
+  }
+  if (typeof value.isHecm !== "boolean") return false;
+  if (
+    typeof value.section121Status !== "string" ||
+    !(SECTION_121_STATUSES as readonly string[]).includes(
+      value.section121Status,
+    )
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 /** True when a value looks like a canonical SellerNetResult. */
