@@ -19,6 +19,7 @@ import {
   SELLER_NET_CONFIG,
   calculateSellerNetWaterfall,
   computeScenarios,
+  computeScenariosAtTargets,
   validateInput,
 } from "@/lib/seller-net";
 import type {
@@ -695,7 +696,13 @@ class McpServiceImpl implements McpService {
       const input = this.requireInput(params);
       const spread = this.resolveSpread(params);
       const current = this.runCalculator(input);
-      const comparison = computeScenarios(input, current, spread);
+      const comparison =
+        params.targets !== undefined
+          ? computeScenariosAtTargets(
+              input,
+              params.targets as [number, number, number],
+            )
+          : computeScenarios(input, current, spread);
       return { comparison, calculatorVersion: CALCULATOR_VERSION };
     });
   }
@@ -1079,10 +1086,10 @@ class McpServiceImpl implements McpService {
           "`targets` must be an array of numbers.",
         );
       }
-      if (params.targets.length > MCP_LIMITS.maxScenarios) {
+      if (params.targets.length !== 3) {
         throw mcpError(
-          "TOO_MANY_SCENARIOS",
-          `At most ${MCP_LIMITS.maxScenarios} scenarios are supported.`,
+          "INVALID_PARAMS",
+          "`targets` must contain exactly three prices: downside, current, and upside.",
         );
       }
       for (const target of params.targets) {
