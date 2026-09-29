@@ -717,7 +717,10 @@ class McpServiceImpl implements McpService {
       if (!record) {
         throw mcpError("NOT_FOUND", "No run record exists for that id.");
       }
-      return { record };
+      return {
+        record,
+        versionMismatch: record.calculatorVersion !== CALCULATOR_VERSION,
+      };
     });
   }
 
