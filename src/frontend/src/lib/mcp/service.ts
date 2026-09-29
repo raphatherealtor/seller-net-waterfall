@@ -333,7 +333,7 @@ const TOOL_DESCRIPTORS: readonly McpToolDescriptor[] = [
   {
     name: "seller_net.explain_result",
     description:
-      "Structure an existing calculator result into labeled lines. Performs no new math.",
+      "Structure an existing calculator result into labeled lines. Performs no new math. Supplying runId requires seller_net:runs scope.",
     inputSchema: {
       type: "object",
       properties: { result: RESULT_SCHEMA, runId: { type: "string" } },
@@ -720,6 +720,7 @@ class McpServiceImpl implements McpService {
         }
         result = params.result;
       } else if (params.runId !== undefined) {
+        this.requireScope(_ctx, SCOPE_RUNS);
         const runId = this.requireRunId(params);
         const record = await this.store.get(_ctx.principal.id, runId);
         if (!record) {
