@@ -266,3 +266,54 @@ export function computeScenarios(
 
   return { spread: effectiveSpread, scenarios: withDeltas };
 }
+
+
+/**
+ * Compute the fixed Downside / Current / Upside positions at three explicit
+ * requested prices. This is primarily used by external capability adapters
+ * such as MCP. Each price still runs through computeScenario(), which delegates
+ * every financial figure to the canonical calculator.
+ */
+export function computeScenariosAtTargets(
+  input: SellerNetInput,
+  targets: readonly [number, number, number],
+): ScenarioComparison {
+  const requested: Record<ScenarioKey, number> = {
+    downside: targets[0],
+    current: targets[1],
+    upside: targets[2],
+  };
+
+  const scenarios = SCENARIO_KEYS.map((key) =>
+    computeScenario(key, input, requested[key]),
+  );
+
+  const currentNet = scenarios.find((scenario) => scenario.key === "current")
+    ?.figures?.estimatedNetProceeds;
+
+  const withDeltas = scenarios.map((scenario) => {
+    if (
+      !scenario.available ||
+      scenario.figures === null ||
+      currentNet === undefined
+    ) {
+      return scenario;
+    }
+    return {
+      ...scenario,
+      deltaVsCurrent: scenario.figures.estimatedNetProceeds - currentNet,
+    };
+  });
+
+  const downsideDistance = Math.abs(targets[1] - targets[0]);
+  const upsideDistance = Math.abs(targets[2] - targets[1]);
+  const symmetric =
+    Number.isFinite(downsideDistance) &&
+    Number.isFinite(upsideDistance) &&
+    Math.abs(downsideDistance - upsideDistance) <= 0.005;
+
+  return {
+    spread: symmetric ? downsideDistance : 0,
+    scenarios: withDeltas,
+  };
+}
