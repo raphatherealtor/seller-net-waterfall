@@ -199,6 +199,25 @@ describe("saved runs", () => {
     ).toBeInTheDocument();
   });
 
+  it("labels a historical-version replay as a recalculation and warns that figures may differ", async () => {
+    const input = savedInput();
+    const historical = {
+      ...savedRecord(input),
+      calculatorVersion: "SELLER_NET_WATERFALL v0.9.0",
+    };
+    mockActor.listRunRecords.mockResolvedValue([historical]);
+
+    renderWithProviders(<SavedRunsPage />);
+
+    await screen.findByTestId("runs.list");
+    expect(screen.getByTestId("runs.version_mismatch.1")).toHaveTextContent(
+      /may produce different figures/i,
+    );
+    expect(screen.getByTestId("runs.replay_button.1")).toHaveTextContent(
+      "Recalculate",
+    );
+  });
+
   it("reports an unreadable snapshot instead of replaying it", async () => {
     const user = userEvent.setup();
     mockActor.listRunRecords.mockResolvedValue([
