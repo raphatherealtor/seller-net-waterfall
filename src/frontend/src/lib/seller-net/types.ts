@@ -33,10 +33,16 @@ export type MortgagePayoffMode = (typeof MORTGAGE_PAYOFF_MODES)[number];
 
 /**
  * Domains that must be reviewed by a licensed professional before the seller
- * relies on the projection. HECM projections always include LENDER; an active
- * tax projection adds CPA_TAX.
+ * relies on the projection. Every seller-net result includes ESCROW and TITLE;
+ * HECM projections additionally include LENDER, and an active tax projection
+ * additionally includes CPA_TAX.
  */
-export const PROFESSIONAL_REVIEW_DOMAINS = ["LENDER", "CPA_TAX"] as const;
+export const PROFESSIONAL_REVIEW_DOMAINS = [
+  "ESCROW",
+  "TITLE",
+  "LENDER",
+  "CPA_TAX",
+] as const;
 
 export type ProfessionalReviewDomain =
   (typeof PROFESSIONAL_REVIEW_DOMAINS)[number];
