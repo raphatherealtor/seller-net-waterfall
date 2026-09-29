@@ -1,0 +1,113 @@
+type Value = 
+ variant {
+   "bool": bool;
+   float: float64;
+   "int": int;
+   "nat": nat;
+   "null";
+   "text": text;
+ };
+type UserRole = 
+ variant {
+   admin;
+   guest;
+   user;
+ };
+type Timestamp = int;
+type SaveRunRecordInput = 
+ record {
+   calculatorVersion: text;
+   effectiveInputsJson: text;
+   inputHash: text;
+   inputProvenanceJson: text;
+   outputsJson: text;
+   propertyId: text;
+   runId: RunId;
+ };
+type RunRecordView = 
+ record {
+   calculatorVersion: text;
+   createdAt: Timestamp;
+   effectiveInputsJson: text;
+   inputHash: text;
+   inputProvenanceJson: text;
+   outputsJson: text;
+   propertyId: text;
+   runId: RunId;
+ };
+type RunRecordError = 
+ variant {
+   alreadyExists: RunId;
+   invalidInput: text;
+   notAuthenticated;
+   notFound: RunId;
+ };
+type RunId = text;
+type Result__1 = 
+ record {
+   hasMore: bool;
+   rows: vec vec Cell;
+ };
+type Result_2 = 
+ variant {
+   err: Error;
+   ok;
+ };
+type Result_1 = 
+ variant {
+   err: RunRecordError;
+   ok;
+ };
+type Result = 
+ variant {
+   err: RunRecordError;
+   ok: RunRecordView;
+ };
+type Error = 
+ variant {
+   AmbiguousAttribute: record {
+                         field: text;
+                         sources: vec text;
+                       };
+   FrontendOriginMismatch: record {
+                             expected: vec text;
+                             got: text;
+                           };
+   FrontendOriginsNotConfigured;
+   MalformedCandid;
+   MissingField: text;
+   MixedSsoSources: record {
+                      otherKeys: vec text;
+                      ssoKeys: vec text;
+                    };
+   NoAttributes;
+   Stale: record {ageNs: nat;};
+   UnknownNonce;
+   UntrustedSsoSource: record {domain: text;};
+ };
+type Cell = 
+ record {
+   name: text;
+   value: Value;
+ };
+service : {
+  _initialize_access_control: () -> ();
+  _internet_identity_sign_in_finish: () -> (Result_2);
+  _internet_identity_sign_in_start: () -> (blob);
+  assignCallerUserRole: (user: principal, role: UserRole) -> ();
+  /// Delete one of the caller's run records by id.
+  deleteRunRecord: (runId: RunId) -> (Result_1);
+  execute: (qJson: text) -> (Result__1) query;
+  /// Static Markdown description of this canister's public API, authored from
+  /// the current backend source. Reads no state.
+  getApiDoc: () -> (text) query;
+  getCallerUserRole: () -> (UserRole) query;
+  /// Fetch one of the caller's run records by id.
+  getRunRecord: (runId: RunId) -> (opt RunRecordView) query;
+  isCallerAdmin: () -> (bool) query;
+  /// List the caller's saved run records, newest first.
+  listRunRecords: () -> (vec RunRecordView) query;
+  /// Save a snapshot run record for the signed-in caller.
+  saveRunRecord: (input: SaveRunRecordInput) -> (Result);
+  schema: () -> (text) query;
+}

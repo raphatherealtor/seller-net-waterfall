@@ -1,0 +1,20 @@
+{
+  "overview": "A deterministic seller net proceeds calculator with a provider-neutral MCP integration layer for external clients.",
+  "features": [
+    "Calculate seller net proceeds with a deterministic waterfall",
+    "Compare downside, current, and upside scenarios",
+    "Save and replay run snapshots",
+    "Expose ten seller_net tools over a standard MCP endpoint",
+    "Structured JSON outputs with provenance and review domains",
+    "Bearer-token-ready authorization and audit metadata"
+  ],
+  "category": "finance",
+  "tags": [
+    "real-estate",
+    "calculator",
+    "mcp",
+    "integration",
+    "finance"
+  ],
+  "last_updated": "2026-09-29T19:37:14.144Z"
+}

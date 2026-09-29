@@ -1,0 +1,609 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("/assets/fonts/SpaceGrotesk.woff2") format("woff2");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "General Sans";
+  src: url("/assets/fonts/GeneralSans.woff2") format("woff2");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/assets/fonts/JetBrainsMono.woff2") format("woff2");
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --font-display: "Space Grotesk";
+    --font-body: "General Sans";
+    --font-mono: "JetBrains Mono";
+    --radius: 0.1875rem; /* 3px — restrained worksheet corner */
+
+    /* Ledger Instrument — light (primary, print-safe) */
+    --background: 0.978 0.003 240;
+    --foreground: 0.2 0.016 250;
+    --card: 1.0 0.0 0;
+    --card-foreground: 0.2 0.016 250;
+    --popover: 1.0 0.0 0;
+    --popover-foreground: 0.2 0.016 250;
+
+    /* Muted ledger teal — not finance-navy, not neon */
+    --primary: 0.42 0.07 205;
+    --primary-foreground: 0.985 0.003 205;
+
+    --secondary: 0.955 0.005 240;
+    --secondary-foreground: 0.29 0.014 250;
+    --muted: 0.958 0.004 240;
+    --muted-foreground: 0.48 0.012 250;
+
+    --accent: 0.42 0.07 205;
+    --accent-foreground: 0.985 0.003 205;
+
+    --destructive: 0.5 0.17 27;
+    --destructive-foreground: 0.985 0.004 27;
+
+    /* Positive net proceeds / negative shortfall semantics */
+    --success: 0.47 0.1 158;
+    --success-foreground: 0.985 0.004 158;
+    --warning: 0.6 0.11 76;
+
+    --border: 0.905 0.005 240;
+    --input: 0.885 0.006 240;
+    --ring: 0.42 0.07 205;
+
+    /* Provenance states — subtle gray outlined chips, never buttons */
+    --prov-user: 0.42 0.07 205;
+    --prov-default: 0.48 0.012 250;
+    --prov-estimate: 0.55 0.09 73;
+    --prov-verified: 0.44 0.09 158;
+    --prov-unknown: 0.52 0.008 250;
+
+    /* Provenance chip surfaces — outlined, low-chroma */
+    --chip-border: 0.86 0.006 245;
+    --chip-bg: 0.985 0.002 240;
+    --chip-fg: 0.42 0.012 250;
+
+    /* Ledger surfaces */
+    --ledger-rule: 0.91 0.005 240;
+    --ledger-rule-strong: 0.79 0.008 240;
+
+    /* Dark navy/charcoal results panel (AA+ on large figures) */
+    --panel: 0.235 0.028 252;
+    --panel-foreground: 0.955 0.006 240;
+    --panel-muted: 0.66 0.014 245;
+    --panel-border: 0.33 0.024 250;
+    --panel-accent: 0.78 0.1 200;
+    --panel-positive: 0.82 0.14 158;
+    --panel-negative: 0.76 0.15 25;
+    --panel-rule: 0.36 0.022 250;
+
+    /* ── Chart palette — muted teal / slate / navy, no rainbow ── */
+    --chart-1: 0.44 0.085 215; /* commissions — ledger teal */
+    --chart-2: 0.5 0.012 245; /* closing costs — slate */
+    --chart-3: 0.33 0.05 258; /* encumbrances/payoffs — deep navy */
+    --chart-4: 0.62 0.09 200; /* seller costs — light teal */
+    --chart-5: 0.58 0.1 76; /* estimated tax — muted amber */
+    --chart-gross: 0.5 0.06 215; /* waterfall gross bar */
+    --chart-net: 0.47 0.1 158; /* waterfall net bar */
+    --chart-track: 0.945 0.004 240; /* chart track / empty rail */
+    --chart-grid: 0.92 0.005 240; /* chart gridline */
+    --chart-baseline: 0.84 0.007 240; /* chart zero baseline */
+
+    /* ── Elevation ladder — restrained depth, layered not glossy ── */
+    --elev-1: 0.99 0.002 240; /* section header / inset strip */
+    --elev-2: 1.0 0.0 0; /* KPI + chart cards */
+    --elev-3: 0.995 0.001 240; /* scenario cards, raised rows */
+    --inset-highlight: 1.0 0.0 0; /* quiet top inner highlight */
+    --inset-shade: 0.2 0.016 250; /* inner shadow tint */
+    --shadow-ink: 0.2 0.016 250; /* shadow color base */
+    --badge-bg: 0.965 0.008 215; /* icon badge fill — faint teal */
+    --badge-border: 0.9 0.012 215; /* icon badge hairline */
+    --badge-ink: 0.42 0.07 205; /* icon badge glyph ink */
+    --badge-highlight: 1.0 0.0 0; /* icon badge top highlight */
+
+    /* ── Dimensional icon badge — "machined keycap", light from upper-left ── */
+    --badge-face: 0.972 0.011 212; /* lit upper-left face */
+    --badge-face-lo: 0.912 0.016 214; /* shaded lower-right face */
+    --badge-edge-lo: 0.855 0.02 216; /* darker machined lower/right edge */
+    --badge-ring: 0.885 0.014 215; /* hairline outer ring */
+    --badge-cast: 0.2 0.016 250; /* soft cast shadow onto the strip */
+    --badge-glyph: 0.4 0.072 208; /* glyph ink, sits inside the recess */
+    --badge-glyph-hi: 1.0 0.0 0; /* glyph micro top highlight */
+    --badge-bevel: 0.99 0.004 212; /* top inner highlight strength */
+
+    --sidebar: 0.955 0.005 240;
+    --sidebar-foreground: 0.19 0.014 245;
+    --sidebar-primary: 0.44 0.085 215;
+    --sidebar-primary-foreground: 0.98 0.004 215;
+    --sidebar-accent: 0.945 0.006 240;
+    --sidebar-accent-foreground: 0.28 0.014 245;
+    --sidebar-border: 0.895 0.006 240;
+    --sidebar-ring: 0.44 0.085 215;
+
+    --gradient-primary: linear-gradient(
+      180deg,
+      oklch(0.47 0.085 215),
+      oklch(0.41 0.085 215)
+    );
+    --gradient-subtle: linear-gradient(
+      180deg,
+      oklch(0.985 0.003 240),
+      oklch(0.965 0.005 240)
+    );
+    --transition-smooth: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --background: 0.165 0.012 245;
+    --foreground: 0.94 0.006 240;
+    --card: 0.205 0.014 245;
+    --card-foreground: 0.94 0.006 240;
+    --popover: 0.225 0.014 245;
+    --popover-foreground: 0.94 0.006 240;
+
+    --primary: 0.72 0.095 205;
+    --primary-foreground: 0.165 0.012 205;
+
+    --secondary: 0.245 0.016 245;
+    --secondary-foreground: 0.86 0.008 240;
+    --muted: 0.245 0.016 245;
+    --muted-foreground: 0.6 0.012 240;
+
+    --accent: 0.72 0.095 205;
+    --accent-foreground: 0.165 0.012 205;
+
+    --destructive: 0.66 0.17 25;
+    --destructive-foreground: 0.165 0.012 25;
+
+    --success: 0.7 0.14 158;
+    --success-foreground: 0.165 0.012 158;
+    --warning: 0.76 0.13 80;
+
+    --border: 0.3 0.016 245;
+    --input: 0.3 0.016 245;
+    --ring: 0.72 0.095 205;
+
+    --prov-user: 0.72 0.095 205;
+    --prov-default: 0.6 0.012 240;
+    --prov-estimate: 0.76 0.13 80;
+    --prov-verified: 0.7 0.14 158;
+    --prov-unknown: 0.66 0.01 240;
+
+    --chip-border: 0.34 0.016 245;
+    --chip-bg: 0.235 0.014 245;
+    --chip-fg: 0.78 0.01 240;
+
+    --ledger-rule: 0.28 0.014 245;
+    --ledger-rule-strong: 0.4 0.016 245;
+
+    --panel: 0.19 0.02 252;
+    --panel-foreground: 0.95 0.006 240;
+    --panel-muted: 0.64 0.014 245;
+    --panel-border: 0.3 0.02 250;
+    --panel-accent: 0.78 0.1 200;
+    --panel-positive: 0.82 0.14 158;
+    --panel-negative: 0.76 0.15 25;
+    --panel-rule: 0.32 0.02 250;
+
+    --chart-1: 0.72 0.095 205; /* commissions — ledger teal */
+    --chart-2: 0.68 0.012 240; /* closing costs — slate */
+    --chart-3: 0.66 0.07 258; /* encumbrances/payoffs — navy */
+    --chart-4: 0.78 0.09 200; /* seller costs — light teal */
+    --chart-5: 0.76 0.11 78; /* estimated tax — muted amber */
+    --chart-gross: 0.74 0.07 215;
+    --chart-net: 0.78 0.13 158;
+    --chart-track: 0.28 0.014 245;
+    --chart-grid: 0.3 0.014 245;
+    --chart-baseline: 0.42 0.016 245;
+
+    --elev-1: 0.225 0.016 245;
+    --elev-2: 0.205 0.014 245;
+    --elev-3: 0.235 0.016 245;
+    --inset-highlight: 0.98 0.004 240;
+    --inset-shade: 0.1 0.01 250;
+    --shadow-ink: 0.05 0.01 250;
+    --badge-bg: 0.26 0.03 215;
+    --badge-border: 0.34 0.03 215;
+    --badge-ink: 0.8 0.1 200;
+    --badge-highlight: 0.95 0.01 215;
+
+    /* ── Dimensional icon badge — dark mode, same upper-left light source ── */
+    --badge-face: 0.31 0.032 214; /* lit upper-left face */
+    --badge-face-lo: 0.235 0.028 214; /* shaded lower-right face */
+    --badge-edge-lo: 0.185 0.024 216; /* darker machined lower/right edge */
+    --badge-ring: 0.38 0.03 214; /* hairline outer ring */
+    --badge-cast: 0.05 0.01 250; /* soft cast shadow */
+    --badge-glyph: 0.82 0.1 200; /* glyph ink on dark face */
+    --badge-glyph-hi: 0.98 0.006 212; /* glyph micro top highlight */
+    --badge-bevel: 0.62 0.05 210; /* top inner highlight strength */
+
+    --sidebar: 0.19 0.013 245;
+    --sidebar-foreground: 0.94 0.006 240;
+    --sidebar-primary: 0.72 0.095 205;
+    --sidebar-primary-foreground: 0.165 0.012 205;
+    --sidebar-accent: 0.245 0.016 245;
+    --sidebar-accent-foreground: 0.86 0.008 240;
+    --sidebar-border: 0.3 0.016 245;
+    --sidebar-ring: 0.72 0.095 205;
+
+    --gradient-primary: linear-gradient(
+      180deg,
+      oklch(0.75 0.095 205),
+      oklch(0.68 0.095 205)
+    );
+    --gradient-subtle: linear-gradient(
+      180deg,
+      oklch(0.22 0.014 245),
+      oklch(0.19 0.012 245)
+    );
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+    font-feature-settings: "tnum" 1, "cv01" 1;
+  }
+  /* Money and every numeric readout uses tabular figures */
+  .tnum,
+  input[type="number"],
+  input[inputmode="decimal"] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+}
+
+@layer utilities {
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+  .font-money {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .bg-gradient-primary {
+    background-image: var(--gradient-primary);
+  }
+  .bg-gradient-subtle {
+    background-image: var(--gradient-subtle);
+  }
+  .shadow-subtle {
+    box-shadow: 0 1px 1px 0 oklch(0.2 0.016 250 / 0.04);
+  }
+  .shadow-elevated {
+    box-shadow: 0 1px 2px 0 oklch(0.2 0.016 250 / 0.05), 0 3px 8px -4px
+      oklch(0.2 0.016 250 / 0.07);
+  }
+  .hairline-t {
+    border-top: 1px solid oklch(var(--ledger-rule));
+  }
+  .hairline-b {
+    border-bottom: 1px solid oklch(var(--ledger-rule));
+  }
+  /* Small uppercase section eyebrow / metadata only */
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.6875rem;
+    line-height: 1;
+    font-weight: 600;
+    color: oklch(var(--muted-foreground));
+  }
+  /* Provenance/status chip — subtle outlined indicator, not a button */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid oklch(var(--chip-border));
+    background-color: oklch(var(--chip-bg));
+    color: oklch(var(--chip-fg));
+    border-radius: 2px;
+    padding: 0.0625rem 0.375rem;
+    font-size: 0.6875rem;
+    line-height: 1.25;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .chip-dot {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: 9999px;
+    background-color: currentColor;
+    opacity: 0.65;
+  }
+  /* Dark results-panel surface */
+  .panel-surface {
+    background-color: oklch(var(--panel));
+    color: oklch(var(--panel-foreground));
+    border: 1px solid oklch(var(--panel-border));
+  }
+  .panel-surface .panel-muted {
+    color: oklch(var(--panel-muted));
+  }
+  .panel-surface .panel-rule {
+    border-color: oklch(var(--panel-rule));
+  }
+
+  /* ── Elevation ladder — layered depth, quiet inset highlight ── */
+  .surface-1 {
+    background-color: oklch(var(--elev-1));
+    border: 1px solid oklch(var(--border));
+    box-shadow: inset 0 1px 0 0 oklch(var(--inset-highlight) / 0.6);
+  }
+  .surface-2 {
+    background-color: oklch(var(--elev-2));
+    border: 1px solid oklch(var(--border));
+    box-shadow: inset 0 1px 0 0 oklch(var(--inset-highlight) / 0.7), 0 1px 1px 0
+      oklch(var(--shadow-ink) / 0.04);
+  }
+  .surface-3 {
+    background-color: oklch(var(--elev-3));
+    border: 1px solid oklch(var(--border));
+    box-shadow: inset 0 1px 0 0 oklch(var(--inset-highlight) / 0.75), 0 1px 2px
+      0 oklch(var(--shadow-ink) / 0.05), 0 3px 8px -4px
+      oklch(var(--shadow-ink) / 0.07);
+  }
+  /* Section header strip — sits above its card body */
+  .section-head {
+    background-color: oklch(var(--elev-1));
+    border-bottom: 1px solid oklch(var(--ledger-rule));
+    box-shadow: inset 0 1px 0 0 oklch(var(--inset-highlight) / 0.6);
+  }
+
+  /* ── Icon badge — dimensional "machined keycap" control ──────────────
+     Reads as a small physical control embedded in the worksheet: a lit
+     upper-left face, a darker lower/right machined edge, a soft cast
+     shadow onto the section strip, and a glyph recessed into the face.
+     One consistent light direction (upper-left) across every section. */
+  .icon-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    position: relative;
+    width: 2.25rem; /* 36px */
+    height: 2.25rem;
+    border-radius: 5px;
+    background-image: linear-gradient(
+      145deg,
+      oklch(var(--badge-face)) 0%,
+      oklch(var(--badge-face-lo)) 100%
+    );
+    background-color: oklch(var(--badge-face-lo));
+    border: 1px solid oklch(var(--badge-ring));
+    color: oklch(var(--badge-glyph));
+    box-shadow:
+      inset 0 1px 0 0 oklch(var(--badge-bevel) / 0.85),
+      inset 1px 0 0 0 oklch(var(--badge-bevel) / 0.35),
+      inset 0 -1px 1px 0 oklch(var(--badge-edge-lo) / 0.9),
+      inset -1px 0 1px 0 oklch(var(--badge-edge-lo) / 0.55),
+      0 1px 0 0 oklch(var(--badge-edge-lo) / 0.45),
+      0 1px 2px 0 oklch(var(--badge-cast) / 0.1),
+      0 3px 6px -3px oklch(var(--badge-cast) / 0.14);
+  }
+  /* Recessed glyph well — a faint inner shadow so the glyph sits inside */
+  .icon-badge::after {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border-radius: 3px;
+    box-shadow: inset 0 1px 1px 0 oklch(var(--badge-edge-lo) / 0.28);
+    pointer-events: none;
+  }
+  /* Recessed glyph plate — the glyph sits inside a shallow machined well so
+     the badge reads as a physical control, not a flat outline icon. */
+  .icon-badge-glyph {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 3px;
+    background-image: linear-gradient(
+      145deg,
+      oklch(var(--badge-edge-lo) / 0.16) 0%,
+      oklch(var(--badge-bevel) / 0.5) 100%
+    );
+    box-shadow: inset 0 1px 1px 0 oklch(var(--badge-edge-lo) / 0.35), inset 0
+      -1px 0 0 oklch(var(--badge-bevel) / 0.45);
+  }
+  .icon-badge svg {
+    position: relative;
+    z-index: 1;
+    width: 1.125rem;
+    height: 1.125rem;
+    stroke-width: 1.9;
+    filter: drop-shadow(0 1px 0 oklch(var(--badge-glyph-hi) / 0.55));
+  }
+  /* Larger badge for the results-panel section headers */
+  .icon-badge-lg {
+    width: 3rem; /* 48px — slightly larger than the 44px standard ceiling */
+    height: 3rem;
+    border-radius: 6px;
+  }
+  .icon-badge-lg::after {
+    inset: 4px;
+    border-radius: 4px;
+  }
+  .icon-badge-lg .icon-badge-glyph {
+    width: 1.875rem;
+    height: 1.875rem;
+    border-radius: 4px;
+  }
+  .icon-badge-lg svg {
+    width: 1.375rem;
+    height: 1.375rem;
+    stroke-width: 1.85;
+  }
+
+  /* ── Chart primitives — deterministic HTML/CSS/SVG charts ── */
+  .chart-track {
+    background-color: oklch(var(--chart-track));
+    border-radius: 2px;
+  }
+  .chart-grid {
+    stroke: oklch(var(--chart-grid));
+    stroke-width: 1;
+  }
+  .chart-baseline {
+    stroke: oklch(var(--chart-baseline));
+    stroke-width: 1;
+  }
+  .chart-bar {
+    border-radius: 2px;
+    transition: width 0.18s cubic-bezier(0.4, 0, 0.2, 1), height 0.18s
+      cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  /* Waterfall step connector — hairline at the post-deduction balance */
+  .chart-connector {
+    stroke: oklch(var(--panel-rule));
+    stroke-width: 1;
+    stroke-dasharray: 2 2;
+  }
+  /* Friction-adjusted scenario marker */
+  .chart-friction {
+    stroke: oklch(var(--panel-foreground));
+    stroke-width: 1.5;
+    opacity: 0.85;
+  }
+  /* SVG chart labels — sized in viewBox units, so they scale with the figure */
+  .chart-axis {
+    fill: oklch(var(--panel-muted));
+    font-family: var(--font-body);
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .chart-axis-strong {
+    fill: oklch(var(--panel-foreground));
+    font-weight: 600;
+  }
+  .chart-value {
+    fill: oklch(var(--panel-foreground));
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .chart-value-strong {
+    fill: oklch(var(--panel-positive));
+    font-weight: 600;
+  }
+
+  /* ── Refined type hierarchy ── */
+  .type-result {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+  }
+  .type-metric {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+  }
+  .type-label {
+    font-family: var(--font-body);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.3;
+    color: oklch(var(--muted-foreground));
+  }
+  .type-meta {
+    font-family: var(--font-body);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1.3;
+    color: oklch(var(--muted-foreground));
+  }
+}
+
+/* ── Print: professional one-page net sheet ───────────────────────── */
+@media print {
+  @page {
+    size: letter portrait;
+    margin: 0.5in;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 10.5pt;
+  }
+  .no-print,
+  [data-print="hide"] {
+    display: none !important;
+  }
+  .print-only,
+  [data-print="only"] {
+    display: block !important;
+  }
+  .print-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+  .print-break-avoid,
+  table,
+  tr,
+  .waterfall-row {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-rule {
+    border-color: #000 !important;
+  }
+  .surface-1,
+  .surface-2,
+  .surface-3,
+  .section-head,
+  .icon-badge {
+    background: #fff !important;
+    background-image: none !important;
+    box-shadow: none !important;
+  }
+  .icon-badge {
+    border-color: #000 !important;
+    color: #000 !important;
+  }
+  .icon-badge::after {
+    display: none !important;
+  }
+  .icon-badge-glyph {
+    background: none !important;
+    background-image: none !important;
+    box-shadow: none !important;
+  }
+  .icon-badge svg {
+    filter: none !important;
+  }
+  a[href]::after {
+    content: "";
+  }
+}
+
+@media screen {
+  .print-only,
+  [data-print="only"] {
+    display: none;
+  }
+}
