@@ -196,6 +196,8 @@ export interface RunRecordPayload {
 /** Result of seller_net.get_run. */
 export interface GetRunResult {
   record: RunRecordPayload;
+  /** True when the stored run was created by a different calculator version. */
+  versionMismatch: boolean;
 }
 
 /** Params of seller_net.list_runs. */
