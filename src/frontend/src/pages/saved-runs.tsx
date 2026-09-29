@@ -8,7 +8,10 @@ import {
   useDeleteRunRecord,
   useRunRecords,
 } from "@/hooks/use-run-records";
-import type { SellerNetInput } from "@/lib/seller-net";
+import {
+  type SellerNetInput,
+  isSellerNetInputShape,
+} from "@/lib/seller-net";
 import { useSellerNet } from "@/state/seller-net-context";
 import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -30,17 +33,7 @@ const SKELETON_IDS = Array.from({ length: 3 }, (_, i) => `run-skeleton-${i}`);
 function parseEffectiveInputs(json: string): SellerNetInput | null {
   try {
     const parsed: unknown = JSON.parse(json);
-    if (!parsed || typeof parsed !== "object") return null;
-    const candidate = parsed as Partial<SellerNetInput>;
-    if (
-      typeof candidate.conditionTier !== "string" ||
-      typeof candidate.mortgagePayoffMode !== "string" ||
-      typeof candidate.basePrice !== "object" ||
-      candidate.basePrice === null
-    ) {
-      return null;
-    }
-    return candidate as SellerNetInput;
+    return isSellerNetInputShape(parsed) ? parsed : null;
   } catch {
     return null;
   }
