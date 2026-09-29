@@ -66,7 +66,8 @@ export interface McpJsonSchema {
     | "number"
     | "integer"
     | "boolean"
-    | "null";
+    | "null"
+    | readonly ("object" | "array" | "string" | "number" | "integer" | "boolean" | "null")[];
   description?: string;
   properties?: Record<string, McpJsonSchema>;
   items?: McpJsonSchema;
