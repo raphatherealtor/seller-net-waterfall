@@ -270,6 +270,27 @@ export function validateInput(input: SellerNetInput): ValidationResult {
     });
   }
 
+  // An estimated payoff with a positive balance cannot silently substitute
+  // UNKNOWN rate/month values with zero. VERIFIED_PAYOFF does not use them.
+  const mortgageBalance = fieldValue(input.mortgageBalance);
+  if (
+    !isHecm &&
+    input.mortgagePayoffMode === "ESTIMATE" &&
+    mortgageBalance !== null &&
+    Number.isFinite(mortgageBalance) &&
+    mortgageBalance > 0
+  ) {
+    for (const key of [
+      "mortgageRateBps",
+      "mortgageMonthsRemaining",
+    ] as const) {
+      const field = readField(input, key);
+      if (field && isUnknown(field) && !missingFields.includes(key)) {
+        missingFields.push(key);
+      }
+    }
+  }
+
   // ── Optional tax module ──────────────────────────────────────────────────
   if (isTaxModuleActive(input)) {
     // UNKNOWN Section 121 status blocks the calculation; it is never silently
