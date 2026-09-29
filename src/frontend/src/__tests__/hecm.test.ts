@@ -129,7 +129,7 @@ describe("HECM off uses the standard mortgage path", () => {
     expect(output.hecmAccruedPayoff).toBeNull();
     expect(output.hecmBalanceShortfall).toBeNull();
     expect(output.hudNonRecourseDeficit).toBeNull();
-    expect(output.professionalReviewDomains).toEqual([]);
+    expect(output.professionalReviewDomains).toEqual(["ESCROW", "TITLE"]);
   });
 });
 
