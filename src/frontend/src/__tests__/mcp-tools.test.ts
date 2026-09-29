@@ -995,3 +995,28 @@ describe("explicit MCP scenario targets", () => {
     expect(scenarios[2]?.figures?.grossPrice).toBe(635_000);
   });
 });
+
+
+describe("stored-run calculator version metadata", () => {
+  it("flags a saved run created by a different calculator version", async () => {
+    const store = createMemoryStore();
+    const input = baseInput();
+    const canonical = calculateSellerNetWaterfall(input);
+    await store.save("principal-runs", {
+      runId: "old-version-run",
+      calculatorVersion: "SELLER_NET_WATERFALL v0.9.0",
+      propertyId: "prop-old-version",
+      effectiveInputs: input,
+      inputProvenance: {},
+      inputHash: canonical.inputHash,
+      outputs: canonical.output,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    });
+    const service = createMcpService({ store });
+    const envelope = await service.getRun(runsCtx, {
+      runId: "old-version-run",
+    });
+    expect(envelope.ok).toBe(true);
+    expect(envelope.result?.versionMismatch).toBe(true);
+  });
+});
