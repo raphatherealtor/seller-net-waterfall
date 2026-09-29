@@ -571,3 +571,60 @@ describe("structured error surface", () => {
     expect(envelope.audit.outcome).toBe("failure");
   });
 });
+
+
+describe("strict MCP input shape", () => {
+  it("rejects a provenanced field whose value is not numeric/null", async () => {
+    const service = makeService();
+    const malformed = {
+      ...baseInput(),
+      basePrice: { value: "500000", provenance: "USER_PROVIDED" },
+    };
+    const envelope = await service.dispatch(readCtx, "seller_net.calculate", {
+      input: malformed,
+    });
+    expectCode(envelope, "INVALID_PARAMS");
+  });
+
+  it("rejects an unknown provenance state", async () => {
+    const service = makeService();
+    const malformed = {
+      ...baseInput(),
+      basePrice: { value: 500000, provenance: "GUESSED" },
+    };
+    const envelope = await service.dispatch(readCtx, "seller_net.calculate", {
+      input: malformed,
+    });
+    expectCode(envelope, "INVALID_PARAMS");
+  });
+
+  it("rejects unsupported enum values", async () => {
+    const service = makeService();
+    const malformed = { ...baseInput(), conditionTier: "MAGICAL" };
+    const envelope = await service.dispatch(readCtx, "seller_net.calculate", {
+      input: malformed,
+    });
+    expectCode(envelope, "INVALID_PARAMS");
+  });
+
+  it("rejects unexpected top-level input keys", async () => {
+    const service = makeService();
+    const malformed = { ...baseInput(), injected: true };
+    const envelope = await service.dispatch(readCtx, "seller_net.calculate", {
+      input: malformed,
+    });
+    expectCode(envelope, "INVALID_PARAMS");
+  });
+
+  it("advertises concrete SellerNetInput properties in tool discovery", async () => {
+    const service = makeService();
+    const envelope = await service.capabilities(readCtx);
+    const calculate = envelope.result?.tools.find(
+      (tool) => tool.name === "seller_net.calculate",
+    );
+    const input = calculate?.inputSchema.properties?.input;
+    expect(input?.properties?.basePrice).toBeDefined();
+    expect(input?.properties?.conditionTier?.enum).toContain("GOOD");
+    expect(input?.additionalProperties).toBe(false);
+  });
+});
