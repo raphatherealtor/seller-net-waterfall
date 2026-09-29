@@ -20,6 +20,7 @@ import {
   calculateSellerNetWaterfall,
   computeScenarios,
   computeScenariosAtTargets,
+  isSellerNetInputShape,
   validateInput,
 } from "@/lib/seller-net";
 import type {
@@ -512,71 +513,7 @@ function isBoundedJson(value: unknown): boolean {
  * guard only — it never validates financial semantics; the canonical validator
  * owns that.
  */
-function isProvenancedNumber(value: unknown): boolean {
-  if (!isRecord(value)) return false;
-  const keys = Object.keys(value);
-  if (
-    keys.some((key) => key !== "value" && key !== "provenance") ||
-    !("value" in value) ||
-    !("provenance" in value)
-  ) {
-    return false;
-  }
-  const rawValue = value.value;
-  if (
-    rawValue !== null &&
-    (typeof rawValue !== "number" || !Number.isFinite(rawValue))
-  ) {
-    return false;
-  }
-  return (
-    typeof value.provenance === "string" &&
-    (PROVENANCE_STATES as readonly string[]).includes(value.provenance)
-  );
-}
 
-function isSellerNetInput(value: unknown): value is SellerNetInput {
-  if (!isRecord(value)) return false;
-
-  const allowed = new Set<string>([
-    ...PROVENANCED_FIELDS,
-    "conditionTier",
-    "mortgagePayoffMode",
-    "isHecm",
-    "section121Status",
-  ]);
-  if (Object.keys(value).some((key) => !allowed.has(key))) return false;
-
-  for (const key of PROVENANCED_FIELDS) {
-    if (!(key in value) || !isProvenancedNumber(value[key])) return false;
-  }
-
-  if (
-    typeof value.conditionTier !== "string" ||
-    !(CONDITION_TIERS as readonly string[]).includes(value.conditionTier)
-  ) {
-    return false;
-  }
-  if (
-    typeof value.mortgagePayoffMode !== "string" ||
-    !(MORTGAGE_PAYOFF_MODES as readonly string[]).includes(
-      value.mortgagePayoffMode,
-    )
-  ) {
-    return false;
-  }
-  if (typeof value.isHecm !== "boolean") return false;
-  if (
-    typeof value.section121Status !== "string" ||
-    !(SECTION_121_STATUSES as readonly string[]).includes(
-      value.section121Status,
-    )
-  ) {
-    return false;
-  }
-
-  return true;
-}
 
 /** True when a value looks like a canonical SellerNetResult. */
 function isSellerNetResult(value: unknown): value is SellerNetResult {
@@ -1053,7 +990,7 @@ class McpServiceImpl implements McpService {
       );
     }
     const input = params.input;
-    if (!isSellerNetInput(input)) {
+    if (!isSellerNetInputShape(input)) {
       throw mcpError(
         "INVALID_PARAMS",
         "`input` is not a structurally valid SellerNetInput.",
