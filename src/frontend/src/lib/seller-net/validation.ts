@@ -8,6 +8,12 @@
 
 import { SELLER_NET_CONFIG } from "./config";
 import { fieldValue, isUnknown } from "./provenance";
+import {
+  CONDITION_TIERS,
+  MORTGAGE_PAYOFF_MODES,
+  PROVENANCE_STATES,
+  SECTION_121_STATUSES,
+} from "./types";
 import type {
   ProvenancedNumber,
   SellerNetInput,
@@ -171,6 +177,102 @@ function readField(
     return raw as ProvenancedNumber;
   }
   return null;
+}
+
+const ALL_PROVENANCED_FIELDS: ReadonlyArray<keyof SellerNetInput> = [
+  "basePrice",
+  "manualAdjustedPrice",
+  "listingCommissionRateBps",
+  "buyerCommissionRateBps",
+  "escrowRateBps",
+  "titleRateBps",
+  "transferTaxRateBps",
+  "recordingFees",
+  "homeWarranty",
+  "annualPropertyTax",
+  "taxDaysElapsed",
+  "mortgageBalance",
+  "mortgageRateBps",
+  "mortgageMonthsRemaining",
+  "hoaPayoff",
+  "liensJudgments",
+  "stagingPhotoCost",
+  "sellerConcessionsToBuyer",
+  "repairsCost",
+  "renovationCost",
+  "hecmInitialBalance",
+  "hecmCurrentRateBps",
+  "hecmLifetimeCapBps",
+  "hecmMonthsElapsed",
+  "originalPurchasePrice",
+  "capitalImprovements",
+  "estimatedCapitalGainsTaxRateBps",
+  "monthlyCarryingCost",
+  "pctExpectedDom",
+  "pctExpectedDiscountPct",
+];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isProvenancedNumberShape(value: unknown): value is ProvenancedNumber {
+  if (!isRecord(value)) return false;
+  const keys = Object.keys(value);
+  if (
+    keys.some((key) => key !== "value" && key !== "provenance") ||
+    !("value" in value) ||
+    !("provenance" in value)
+  ) {
+    return false;
+  }
+  const rawValue = value.value;
+  if (
+    rawValue !== null &&
+    (typeof rawValue !== "number" || !Number.isFinite(rawValue))
+  ) {
+    return false;
+  }
+  return (
+    typeof value.provenance === "string" &&
+    (PROVENANCE_STATES as readonly string[]).includes(value.provenance)
+  );
+}
+
+/**
+ * Strict runtime shape guard for persisted/external SellerNetInput payloads.
+ * This does not replace semantic validation; it prevents malformed objects from
+ * being cast into the canonical calculator contract.
+ */
+export function isSellerNetInputShape(value: unknown): value is SellerNetInput {
+  if (!isRecord(value)) return false;
+
+  const allowed = new Set<string>([
+    ...ALL_PROVENANCED_FIELDS,
+    "conditionTier",
+    "mortgagePayoffMode",
+    "isHecm",
+    "section121Status",
+  ]);
+  if (Object.keys(value).some((key) => !allowed.has(key))) return false;
+
+  for (const key of ALL_PROVENANCED_FIELDS) {
+    if (!(key in value) || !isProvenancedNumberShape(value[key])) return false;
+  }
+
+  return (
+    typeof value.conditionTier === "string" &&
+    (CONDITION_TIERS as readonly string[]).includes(value.conditionTier) &&
+    typeof value.mortgagePayoffMode === "string" &&
+    (MORTGAGE_PAYOFF_MODES as readonly string[]).includes(
+      value.mortgagePayoffMode,
+    ) &&
+    typeof value.isHecm === "boolean" &&
+    typeof value.section121Status === "string" &&
+    (SECTION_121_STATUSES as readonly string[]).includes(
+      value.section121Status,
+    )
+  );
 }
 
 /** Validate a full input, returning every issue found. */
