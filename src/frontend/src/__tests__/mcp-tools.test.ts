@@ -935,3 +935,43 @@ function estimate(value: number) {
 function verifiedPayoff(value: number) {
   return { value, provenance: "VERIFIED_PAYOFF" as const };
 }
+
+
+describe("explain_result stored-run authorization", () => {
+  it("requires seller_net:runs scope when explanation is loaded by runId", async () => {
+    const store = createMemoryStore();
+    const service = createMcpService({ store });
+    const ownerWithRuns: McpAuthContext = {
+      principal: {
+        id: "principal-shared",
+        anonymous: false,
+        scopes: [SCOPE_READ, SCOPE_RUNS],
+      },
+    };
+    const sameOwnerWithoutRuns: McpAuthContext = {
+      principal: {
+        id: "principal-shared",
+        anonymous: false,
+        scopes: [SCOPE_READ],
+      },
+    };
+
+    const created = await service.createRun(ownerWithRuns, {
+      runId: "run-explain-auth",
+      propertyId: "prop-explain-auth",
+      input: baseInput(),
+    });
+    expect(created.ok).toBe(true);
+
+    const denied = await service.explainResult(sameOwnerWithoutRuns, {
+      runId: "run-explain-auth",
+    });
+    expect(denied.ok).toBe(false);
+    expect(denied.error?.code).toBe("FORBIDDEN");
+
+    const allowed = await service.explainResult(ownerWithRuns, {
+      runId: "run-explain-auth",
+    });
+    expect(allowed.ok).toBe(true);
+  });
+});
