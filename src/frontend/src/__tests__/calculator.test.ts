@@ -333,4 +333,36 @@ describe("validation and provenance", () => {
     expect(unknown.value).toBeNull();
     expect(zero.value).toBe(0);
   });
+
+  it("requires rate and months for a positive-balance estimated mortgage payoff", () => {
+    const input = baseInput({
+      mortgagePayoffMode: "ESTIMATE",
+      mortgageBalance: userProvided(300_000),
+      mortgageRateBps: unknownField(),
+      mortgageMonthsRemaining: unknownField(),
+    });
+    const result = validateInput(input);
+    expect(result.valid).toBe(false);
+    expect(result.missingFields).toContain("mortgageRateBps");
+    expect(result.missingFields).toContain("mortgageMonthsRemaining");
+  });
+
+  it("does not require estimate-only mortgage fields for a verified payoff", () => {
+    const input = baseInput({
+      mortgagePayoffMode: "VERIFIED_PAYOFF",
+      mortgageBalance: userProvided(300_000),
+      mortgageRateBps: unknownField(),
+      mortgageMonthsRemaining: unknownField(),
+    });
+    const result = validateInput(input);
+    expect(result.missingFields).not.toContain("mortgageRateBps");
+    expect(result.missingFields).not.toContain("mortgageMonthsRemaining");
+    expect(result.valid).toBe(true);
+  });
+
+  it("includes ESCROW and TITLE as baseline professional review domains", () => {
+    const { output } = calculateSellerNetWaterfall(baseInput());
+    expect(output.professionalReviewDomains).toContain("ESCROW");
+    expect(output.professionalReviewDomains).toContain("TITLE");
+  });
 });
