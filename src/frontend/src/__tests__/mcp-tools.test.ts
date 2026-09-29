@@ -975,3 +975,23 @@ describe("explain_result stored-run authorization", () => {
     expect(allowed.ok).toBe(true);
   });
 });
+
+
+describe("explicit MCP scenario targets", () => {
+  it("uses the three requested prices instead of silently falling back to spread mode", async () => {
+    const service = makeService();
+    const targets = [410_000, 500_000, 635_000];
+    const envelope = await service.compareScenarios(readCtx, {
+      input: baseInput(),
+      targets,
+    });
+    expect(envelope.ok).toBe(true);
+    const scenarios = envelope.result?.comparison.scenarios ?? [];
+    expect(scenarios.map((scenario) => scenario.requestedPrice)).toEqual(
+      targets,
+    );
+    expect(scenarios[0]?.figures?.grossPrice).toBe(410_000);
+    expect(scenarios[1]?.figures?.grossPrice).toBe(500_000);
+    expect(scenarios[2]?.figures?.grossPrice).toBe(635_000);
+  });
+});
