@@ -65,6 +65,7 @@ export {
   SCENARIO_KEYS,
   SCENARIO_LABELS,
   computeScenarios,
+  computeScenariosAtTargets,
 } from "./scenarios";
 export type {
   ScenarioComparison,
