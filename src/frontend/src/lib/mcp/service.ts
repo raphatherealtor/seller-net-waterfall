@@ -1086,6 +1086,12 @@ class McpServiceImpl implements McpService {
           "`targets` must be an array of numbers.",
         );
       }
+      if (params.targets.length > MCP_LIMITS.maxScenarios) {
+        throw mcpError(
+          "TOO_MANY_SCENARIOS",
+          `At most ${MCP_LIMITS.maxScenarios} scenarios are supported.`,
+        );
+      }
       if (params.targets.length !== 3) {
         throw mcpError(
           "INVALID_PARAMS",
