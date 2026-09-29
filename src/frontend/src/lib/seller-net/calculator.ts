@@ -128,7 +128,10 @@ export function calculateSellerNetWaterfall(
   let hecmAccruedPayoff: number | null = null;
   let hecmBalanceShortfall: number | null = null;
   let hudNonRecourseDeficit: number | null = null;
-  let professionalReviewDomains: readonly ProfessionalReviewDomain[] = [];
+  let professionalReviewDomains: readonly ProfessionalReviewDomain[] = [
+    "ESCROW",
+    "TITLE",
+  ];
 
   if (isHecm) {
     const hecmInitialBalance = valueOr(input.hecmInitialBalance, 0);
@@ -153,7 +156,7 @@ export function calculateSellerNetWaterfall(
         ? accrued
         : 0;
 
-    professionalReviewDomains = ["LENDER"];
+    professionalReviewDomains = [...professionalReviewDomains, "LENDER"];
   }
 
   const mortgagePayoff = isHecm
