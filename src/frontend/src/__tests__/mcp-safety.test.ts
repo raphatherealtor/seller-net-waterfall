@@ -365,18 +365,24 @@ describe("scenario count limits", () => {
     expectCode(envelope, "TOO_MANY_SCENARIOS");
   });
 
-  it("accepts exactly the maximum number of scenarios", async () => {
+  it("accepts exactly three explicit scenario targets", async () => {
     const service = makeService();
-    const targets = Array.from(
-      { length: MCP_LIMITS.maxScenarios },
-      (_, index) => 400_000 + index * 1_000,
-    );
     const envelope = await service.dispatch(
       readCtx,
       "seller_net.compare_scenarios",
-      { input: baseInput(), targets },
+      { input: baseInput(), targets: [475_000, 500_000, 525_000] },
     );
     expect(envelope.ok).toBe(true);
+  });
+
+  it("rejects a non-three target array within the global scenario limit", async () => {
+    const service = makeService();
+    const envelope = await service.dispatch(
+      readCtx,
+      "seller_net.compare_scenarios",
+      { input: baseInput(), targets: [475_000, 500_000, 525_000, 550_000] },
+    );
+    expectCode(envelope, "INVALID_PARAMS");
   });
 
   it("returns INVALID_PARAMS when targets is not an array", async () => {
