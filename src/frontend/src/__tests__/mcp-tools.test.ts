@@ -644,6 +644,27 @@ describe("health", () => {
     expect(envelope.result?.calculatorAvailable).toBe(true);
     expect(envelope.result?.persistenceAvailable).toBe(true);
   });
+
+  it("reports degraded health when run persistence is unavailable", async () => {
+    const service = createMcpService({
+      store: {
+        async save() {
+          return { ok: false as const, code: "INTERNAL_ERROR" as const };
+        },
+        async get() {
+          throw new Error("persistence unavailable");
+        },
+        async list() {
+          throw new Error("persistence unavailable");
+        },
+      },
+    });
+    const envelope = await service.health(readCtx);
+    expect(envelope.ok).toBe(true);
+    expect(envelope.result?.status).toBe("degraded");
+    expect(envelope.result?.calculatorAvailable).toBe(true);
+    expect(envelope.result?.persistenceAvailable).toBe(false);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
