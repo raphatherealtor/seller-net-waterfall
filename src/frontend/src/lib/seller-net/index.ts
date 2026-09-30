@@ -65,6 +65,7 @@ export {
   verifiedPayoff,
 } from "./provenance";
 
+export { deriveEffectiveInput } from "./effective-input";
 export { computeInputHash, hashString, serializeInput } from "./hash";
 
 export {
