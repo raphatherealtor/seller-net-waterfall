@@ -195,6 +195,37 @@ describe("initialize", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// notifications
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("notifications", () => {
+  it("acknowledges notifications/initialized without a JSON-RPC response", async () => {
+    const { transport } = makeTransport();
+    const response = await transport.handle(
+      post({
+        jsonrpc: "2.0",
+        method: "notifications/initialized",
+        params: {},
+      }),
+    );
+    expect(response.status).toBe(202);
+    expect(response.body).toBe("");
+  });
+
+  it("never returns a JSON-RPC error body for an unknown notification", async () => {
+    const { transport } = makeTransport();
+    const response = await transport.handle(
+      post({
+        jsonrpc: "2.0",
+        method: "notifications/unknown",
+      }),
+    );
+    expect(response.status).toBe(202);
+    expect(response.body).toBe("");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ping
 // ─────────────────────────────────────────────────────────────────────────────
 
