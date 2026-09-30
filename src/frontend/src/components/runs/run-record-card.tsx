@@ -10,6 +10,7 @@ import {
 import {
   CALCULATOR_VERSION,
   type SellerNetOutput,
+  isSellerNetOutputShape,
 } from "@/lib/seller-net";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, Hash, History, RotateCcw, Trash2 } from "lucide-react";
@@ -37,10 +38,7 @@ interface RunRecordCardProps {
 function parseOutputs(outputsJson: string): SellerNetOutput | null {
   try {
     const parsed: unknown = JSON.parse(outputsJson);
-    if (parsed && typeof parsed === "object") {
-      return parsed as SellerNetOutput;
-    }
-    return null;
+    return isSellerNetOutputShape(parsed) ? parsed : null;
   } catch {
     return null;
   }
