@@ -19,6 +19,7 @@ import {
   SELLER_NET_CONFIG,
   calculateSellerNetWaterfall,
   calculateSellerNetWaterfallStrict,
+  deriveEffectiveInput,
   computeScenariosStrict,
   computeScenariosAtTargetsStrict,
   isSellerNetInputShape,
@@ -733,16 +734,17 @@ class McpServiceImpl implements McpService {
         );
       }
       const input = this.requireInput(params);
+      const effectiveInput = deriveEffectiveInput(input);
 
-      // The exact effective inputs the calculator used, plus its canonical
-      // outputs. No financial value is recomputed here.
-      const result = this.runCalculator(input);
+      // The exact branch-effective inputs the calculator used, plus its
+      // canonical outputs. No financial value is re-derived here.
+      const result = this.runCalculator(effectiveInput);
       const record: RunRecordPayload = {
         runId,
         calculatorVersion: result.calculatorVersion,
         propertyId,
-        effectiveInputs: input,
-        inputProvenance: provenanceOf(input),
+        effectiveInputs: effectiveInput,
+        inputProvenance: provenanceOf(effectiveInput),
         inputHash: result.inputHash,
         outputs: result.output,
         createdAt: new Date(this.now()).toISOString(),
