@@ -171,12 +171,12 @@ describe("auth scopes and context resolution", () => {
     expect(verifier.verify).not.toHaveBeenCalled();
   });
 
-  it("falls back to the anonymous context when verification fails", async () => {
+  it("preserves rejected credentials as a distinct scope-free context", async () => {
     const verifier: McpTokenVerifier = {
       verify: vi.fn(async () => null),
     };
     await expect(resolveAuthContext("bad-token", verifier)).resolves.toBe(
-      anonymousAuthContext,
+      invalidCredentialsContext,
     );
     expect(verifier.verify).toHaveBeenCalledWith("bad-token");
   });
