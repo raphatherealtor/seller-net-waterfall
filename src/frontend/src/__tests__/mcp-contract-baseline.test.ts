@@ -42,7 +42,7 @@ import { describe, expect, it, vi } from "vitest";
 describe("version separation", () => {
   it("keeps the MCP schema version independent of the calculator version", () => {
     expect(MCP_SCHEMA_VERSION).toBe("seller_net.mcp.v2");
-    expect(CALCULATOR_VERSION).toBe("SELLER_NET_WATERFALL v1.3.0");
+    expect(CALCULATOR_VERSION).toBe("SELLER_NET_WATERFALL v1.4.0");
     expect(MCP_SCHEMA_VERSION).not.toBe(CALCULATOR_VERSION);
   });
 
