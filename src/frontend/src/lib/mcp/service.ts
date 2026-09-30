@@ -19,8 +19,8 @@ import {
   SELLER_NET_CONFIG,
   calculateSellerNetWaterfall,
   calculateSellerNetWaterfallStrict,
-  computeScenarios,
-  computeScenariosAtTargets,
+  computeScenariosStrict,
+  computeScenariosAtTargetsStrict,
   isSellerNetInputShape,
   isSellerNetOutputShape,
   validateInput,
@@ -697,11 +697,11 @@ class McpServiceImpl implements McpService {
       const current = this.runCalculator(input);
       const comparison =
         params.targets !== undefined
-          ? computeScenariosAtTargets(
+          ? computeScenariosAtTargetsStrict(
               input,
               params.targets as [number, number, number],
             )
-          : computeScenarios(input, current, spread);
+          : computeScenariosStrict(input, current, spread);
       return { comparison, calculatorVersion: CALCULATOR_VERSION };
     });
   }
