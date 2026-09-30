@@ -2,6 +2,7 @@ import {
   SELLER_NET_CONFIG,
   type SellerNetInput,
   calculateSellerNetWaterfall,
+  calculateSellerNetWaterfallStrict,
   defaultAssumption,
   isCalculable,
   unknownField,
@@ -321,6 +322,19 @@ describe("HECM finite-output guard", () => {
     );
     expect(output.hecmAccruedPayoff).toBe(0);
     expect(Number.isFinite(output.hecmAccruedPayoff as number)).toBe(true);
+  });
+
+  it("strict authoritative calculation rejects an overflowed HECM payoff", () => {
+    expect(() =>
+      calculateSellerNetWaterfallStrict(
+        hecmInput({
+          hecmInitialBalance: userProvided(1_000_000_000),
+          hecmCurrentRateBps: userProvided(10_000),
+          hecmLifetimeCapBps: userProvided(0),
+          hecmMonthsElapsed: userProvided(10_000),
+        }),
+      ),
+    ).toThrow(/HECM accrued payoff|non-finite/i);
   });
 
   it("never emits NaN or Infinity for non-finite HECM inputs", () => {
