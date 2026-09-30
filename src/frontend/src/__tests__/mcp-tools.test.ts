@@ -19,6 +19,7 @@ import {
   type SellerNetInput,
   calculateSellerNetWaterfall,
   computeScenarios,
+  deriveEffectiveInput,
   defaultAssumption,
   unknownField,
   userProvided,
@@ -510,9 +511,10 @@ describe("run creation, retrieval, and replay", () => {
       input,
     });
     const fetched = await service.getRun(runsCtx, { runId: "run-2" });
-    expect(fetched.result?.record.effectiveInputs).toEqual(input);
+    const effective = deriveEffectiveInput(input);
+    expect(fetched.result?.record.effectiveInputs).toEqual(effective);
     expect(fetched.result?.record.inputHash).toBe(
-      calculateSellerNetWaterfall(input).inputHash,
+      calculateSellerNetWaterfall(effective).inputHash,
     );
   });
 
