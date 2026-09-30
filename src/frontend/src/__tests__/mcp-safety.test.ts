@@ -345,6 +345,28 @@ describe("out-of-range numbers", () => {
     expectCode(envelope, "OUT_OF_RANGE");
   });
 
+  it("returns OUT_OF_RANGE when a money input exceeds the MCP contract limit", async () => {
+    const service = makeService();
+    const envelope = await service.dispatch(readCtx, "seller_net.calculate", {
+      input: baseInput({
+        basePrice: userProvided(MCP_LIMITS.maxMoney + 1),
+      }),
+    });
+    expectCode(envelope, "OUT_OF_RANGE");
+  });
+
+  it("returns OUT_OF_RANGE when an accrual month count exceeds the MCP contract limit", async () => {
+    const service = makeService();
+    const envelope = await service.dispatch(readCtx, "seller_net.calculate", {
+      input: baseInput({
+        mortgagePayoffMode: "ESTIMATE",
+        mortgageRateBps: userProvided(500),
+        mortgageMonthsRemaining: userProvided(MCP_LIMITS.maxMonths + 1),
+      }),
+    });
+    expectCode(envelope, "OUT_OF_RANGE");
+  });
+
   it("returns VALIDATION_FAILED when the canonical validator rejects the input", async () => {
     const service = makeService();
     const envelope = await service.dispatch(readCtx, "seller_net.calculate", {
@@ -661,7 +683,7 @@ describe("authoritative calculation failure", () => {
       hecmInitialBalance: userProvided(1_000_000_000),
       hecmCurrentRateBps: userProvided(10_000),
       hecmLifetimeCapBps: userProvided(0),
-      hecmMonthsElapsed: userProvided(10_000),
+      hecmMonthsElapsed: userProvided(MCP_LIMITS.maxMonths),
     });
     const envelope = await service.dispatch(readCtx, "seller_net.calculate", {
       input,
