@@ -193,7 +193,7 @@ describe("non-HECM output shape", () => {
     expect(output.hecmAccruedPayoff).toBeNull();
     expect(output.hecmBalanceShortfall).toBeNull();
     expect(output.hudNonRecourseDeficit).toBeNull();
-    expect(output.professionalReviewDomains).toEqual([]);
+    expect(output.professionalReviewDomains).toEqual(["ESCROW", "TITLE"]);
     expect(output.taxActive).toBe(false);
     expect(output.section121EligibilityAssumed).toBe(false);
     expect(output.adjustedBasis).toBe(0);
