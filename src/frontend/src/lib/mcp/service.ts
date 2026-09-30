@@ -517,6 +517,64 @@ function isBoundedJson(value: unknown): boolean {
  */
 
 
+const MCP_MONEY_FIELDS = [
+  "basePrice",
+  "manualAdjustedPrice",
+  "recordingFees",
+  "homeWarranty",
+  "annualPropertyTax",
+  "mortgageBalance",
+  "hoaPayoff",
+  "liensJudgments",
+  "stagingPhotoCost",
+  "sellerConcessionsToBuyer",
+  "repairsCost",
+  "renovationCost",
+  "hecmInitialBalance",
+  "originalPurchasePrice",
+  "capitalImprovements",
+  "monthlyCarryingCost",
+] as const satisfies readonly (keyof SellerNetInput)[];
+
+const MCP_MONTH_FIELDS = [
+  "mortgageMonthsRemaining",
+  "hecmMonthsElapsed",
+] as const satisfies readonly (keyof SellerNetInput)[];
+
+function assertMcpInputLimits(input: SellerNetInput): void {
+  for (const key of MCP_MONEY_FIELDS) {
+    const value = input[key];
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      "value" in value &&
+      typeof value.value === "number" &&
+      value.value > MCP_LIMITS.maxMoney
+    ) {
+      throw mcpError(
+        "OUT_OF_RANGE",
+        `${key} must not exceed ${MCP_LIMITS.maxMoney}.`,
+      );
+    }
+  }
+
+  for (const key of MCP_MONTH_FIELDS) {
+    const value = input[key];
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      "value" in value &&
+      typeof value.value === "number" &&
+      value.value > MCP_LIMITS.maxMonths
+    ) {
+      throw mcpError(
+        "OUT_OF_RANGE",
+        `${key} must not exceed ${MCP_LIMITS.maxMonths} months.`,
+      );
+    }
+  }
+}
+
 /** True when a value looks like a canonical SellerNetResult. */
 function isSellerNetResult(value: unknown): value is SellerNetResult {
   if (!isRecord(value)) return false;
@@ -1009,6 +1067,7 @@ class McpServiceImpl implements McpService {
         "`input` is not a structurally valid SellerNetInput.",
       );
     }
+    assertMcpInputLimits(input);
     return input;
   }
 
