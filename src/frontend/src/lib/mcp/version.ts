@@ -9,7 +9,7 @@
  */
 
 /** Version of the MCP tool/contract schema. Bump on any contract shape change. */
-export const MCP_SCHEMA_VERSION = "seller_net.mcp.v1";
+export const MCP_SCHEMA_VERSION = "seller_net.mcp.v2";
 
 /** Version of the MCP protocol surface this layer targets (JSON-RPC 2.0). */
 export const MCP_PROTOCOL_VERSION = "2024-11-05";
@@ -18,4 +18,4 @@ export const MCP_PROTOCOL_VERSION = "2024-11-05";
 export const MCP_SERVER_NAME = "seller-net-mcp";
 
 /** Server implementation version (independent of schema and calculator). */
-export const MCP_SERVER_VERSION = "1.0.0";
+export const MCP_SERVER_VERSION = "1.1.0";
