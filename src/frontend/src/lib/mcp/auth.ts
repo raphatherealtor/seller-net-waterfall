@@ -36,7 +36,7 @@ export interface McpTokenVerifier {
   verify(token: string): Promise<McpPrincipal | null>;
 }
 
-/** Scope required to read calculator data (capabilities, config, calculate). */
+/** Read-scope vocabulary available to hosts that choose to protect pure tools. */
 export const SCOPE_READ = "seller_net:read";
 
 /** Scope required to create, read, list, or replay run records. */
