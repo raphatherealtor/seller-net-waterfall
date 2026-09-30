@@ -14,6 +14,7 @@ import {
   SCOPE_READ,
   SCOPE_RUNS,
   anonymousAuthContext,
+  invalidCredentialsContext,
   hasScope,
   mcpError,
   resolveAuthContext,
