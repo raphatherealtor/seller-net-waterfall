@@ -7,7 +7,7 @@
 
 import type { ConditionTier, Section121Status } from "./types";
 
-export const CALCULATOR_VERSION = "SELLER_NET_WATERFALL v1.3.0";
+export const CALCULATOR_VERSION = "SELLER_NET_WATERFALL v1.4.0";
 
 /** Condition tier → price adjustment percentage (fraction, not basis points). */
 export const CONDITION_TIER_ADJUSTMENTS: Record<ConditionTier, number> = {
