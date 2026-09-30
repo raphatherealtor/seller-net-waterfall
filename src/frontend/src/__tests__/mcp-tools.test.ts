@@ -688,10 +688,13 @@ describe("provenance and review domains", () => {
     expect(envelope.result?.professionalReviewDomains).toContain("CPA_TAX");
   });
 
-  it("reports no review domains for a plain calculation", async () => {
+  it("reports ESCROW and TITLE as baseline review domains for a plain calculation", async () => {
     const service = makeService();
     const envelope = await service.calculate(readCtx, { input: baseInput() });
-    expect(envelope.result?.professionalReviewDomains).toEqual([]);
+    expect(envelope.result?.professionalReviewDomains).toEqual([
+      "ESCROW",
+      "TITLE",
+    ]);
   });
 });
 
@@ -746,13 +749,13 @@ describe("declared review domain vocabulary", () => {
     ]);
   });
 
-  it("echoes only the canonical active domains, never inventing ESCROW or TITLE", async () => {
+  it("echoes the canonical baseline and contextual review domains", async () => {
     const service = makeService();
     const envelope = await service.calculate(readCtx, { input: hecmInput() });
     const domains = envelope.result?.professionalReviewDomains ?? [];
+    expect(domains).toContain("ESCROW");
+    expect(domains).toContain("TITLE");
     expect(domains).toContain("LENDER");
-    expect(domains).not.toContain("ESCROW");
-    expect(domains).not.toContain("TITLE");
   });
 });
 
