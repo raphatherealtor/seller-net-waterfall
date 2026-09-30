@@ -82,7 +82,7 @@ describe("canonical result envelope", () => {
       "output",
     ]);
     expect(result.calculatorVersion).toBe(CALCULATOR_VERSION);
-    expect(result.calculatorVersion).toBe("SELLER_NET_WATERFALL v1.3.0");
+    expect(result.calculatorVersion).toBe("SELLER_NET_WATERFALL v1.4.0");
     expect(result.inputHash).toMatch(/^[0-9a-f]{8}$/);
   });
 
