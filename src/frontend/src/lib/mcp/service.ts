@@ -1033,12 +1033,6 @@ class McpServiceImpl implements McpService {
           `At most ${MCP_LIMITS.maxScenarios} scenarios are supported.`,
         );
       }
-      if (params.targets.length !== 3) {
-        throw mcpError(
-          "INVALID_PARAMS",
-          "`targets` must contain exactly three prices: downside, current, and upside.",
-        );
-      }
       for (const target of params.targets) {
         if (!inRange(target, 0, MCP_LIMITS.maxMoney)) {
           throw mcpError(
@@ -1046,6 +1040,12 @@ class McpServiceImpl implements McpService {
             `Each target must be between 0 and ${MCP_LIMITS.maxMoney}.`,
           );
         }
+      }
+      if (params.targets.length !== 3) {
+        throw mcpError(
+          "INVALID_PARAMS",
+          "`targets` must contain exactly three prices: downside, current, and upside.",
+        );
       }
     }
     if (params.spread === undefined) return SCENARIO_DEFAULT_SPREAD;
