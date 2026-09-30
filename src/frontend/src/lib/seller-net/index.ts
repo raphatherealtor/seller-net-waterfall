@@ -37,7 +37,12 @@ export type {
   ValidationResult,
 } from "./types";
 
-export { calculateSellerNetWaterfall, roundMoney } from "./calculator";
+export {
+  SellerNetCalculationError,
+  calculateSellerNetWaterfall,
+  calculateSellerNetWaterfallStrict,
+  roundMoney,
+} from "./calculator";
 
 export {
   isCalculable,
