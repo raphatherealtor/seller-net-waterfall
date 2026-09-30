@@ -28,6 +28,7 @@ export {
   SCOPE_READ,
   SCOPE_RUNS,
   anonymousAuthContext,
+  invalidCredentialsContext,
   hasScope,
   resolveAuthContext,
 } from "./auth";

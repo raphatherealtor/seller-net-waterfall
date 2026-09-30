@@ -7,7 +7,11 @@ import {
   formatPropertyId,
   timestampToDate,
 } from "@/lib/format";
-import type { SellerNetOutput } from "@/lib/seller-net";
+import {
+  CALCULATOR_VERSION,
+  type SellerNetOutput,
+  isSellerNetOutputShape,
+} from "@/lib/seller-net";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, Hash, History, RotateCcw, Trash2 } from "lucide-react";
 
@@ -34,10 +38,7 @@ interface RunRecordCardProps {
 function parseOutputs(outputsJson: string): SellerNetOutput | null {
   try {
     const parsed: unknown = JSON.parse(outputsJson);
-    if (parsed && typeof parsed === "object") {
-      return parsed as SellerNetOutput;
-    }
-    return null;
+    return isSellerNetOutputShape(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -60,6 +61,7 @@ export function RunRecordCard({
   const output = parseOutputs(record.outputsJson);
   const createdAt = formatDateTime(timestampToDate(record.createdAt));
   const hasShortfall = (output?.estimatedSellerShortfall ?? 0) > 0;
+  const versionMismatch = record.calculatorVersion !== CALCULATOR_VERSION;
 
   const identity: IdentityRow[] = [
     { label: "Run ID", value: record.runId, mono: true },
@@ -97,7 +99,7 @@ export function RunRecordCard({
             onClick={() => onReplay(record)}
           >
             <RotateCcw aria-hidden="true" className="size-3.5" />
-            Replay
+            {versionMismatch ? "Recalculate" : "Replay"}
           </Button>
           <Button
             type="button"
@@ -113,6 +115,22 @@ export function RunRecordCard({
           </Button>
         </div>
       </header>
+
+      {versionMismatch ? (
+        <div
+          data-ocid={`runs.version_mismatch.${index}`}
+          role="status"
+          className="flex items-start gap-2 border-b border-warning/30 bg-warning/10 px-3.5 py-2 text-[11px] text-foreground"
+        >
+          <AlertTriangle
+            aria-hidden="true"
+            className="mt-0.5 size-3.5 shrink-0 text-warning"
+          />
+          <span>
+            Historical snapshot created with {record.calculatorVersion}. Recalculate uses {CALCULATOR_VERSION} and may produce different figures.
+          </span>
+        </div>
+      ) : null}
 
       <dl className="grid grid-cols-1 gap-x-6 gap-y-1.5 border-b border-border px-3.5 py-2.5 sm:grid-cols-2 lg:grid-cols-4">
         {identity.map((row) => (

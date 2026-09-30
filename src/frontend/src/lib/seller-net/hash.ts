@@ -5,6 +5,7 @@
  * always yield the same identity, regardless of key insertion order.
  */
 
+import { deriveEffectiveInput } from "./effective-input";
 import type { ProvenancedNumber, SellerNetInput } from "./types";
 
 /** Stable serialization of a single provenanced field. */
@@ -17,41 +18,42 @@ function serializeField(field: ProvenancedNumber): string {
  * order so the output never depends on object key ordering.
  */
 export function serializeInput(input: SellerNetInput): string {
+  const effective = deriveEffectiveInput(input);
   const parts: string[] = [
-    `basePrice=${serializeField(input.basePrice)}`,
-    `manualAdjustedPrice=${serializeField(input.manualAdjustedPrice)}`,
-    `conditionTier=${input.conditionTier}`,
-    `listingCommissionRateBps=${serializeField(input.listingCommissionRateBps)}`,
-    `buyerCommissionRateBps=${serializeField(input.buyerCommissionRateBps)}`,
-    `escrowRateBps=${serializeField(input.escrowRateBps)}`,
-    `titleRateBps=${serializeField(input.titleRateBps)}`,
-    `transferTaxRateBps=${serializeField(input.transferTaxRateBps)}`,
-    `recordingFees=${serializeField(input.recordingFees)}`,
-    `homeWarranty=${serializeField(input.homeWarranty)}`,
-    `annualPropertyTax=${serializeField(input.annualPropertyTax)}`,
-    `taxDaysElapsed=${serializeField(input.taxDaysElapsed)}`,
-    `mortgageBalance=${serializeField(input.mortgageBalance)}`,
-    `mortgageRateBps=${serializeField(input.mortgageRateBps)}`,
-    `mortgageMonthsRemaining=${serializeField(input.mortgageMonthsRemaining)}`,
-    `mortgagePayoffMode=${input.mortgagePayoffMode}`,
-    `hoaPayoff=${serializeField(input.hoaPayoff)}`,
-    `liensJudgments=${serializeField(input.liensJudgments)}`,
-    `stagingPhotoCost=${serializeField(input.stagingPhotoCost)}`,
-    `sellerConcessionsToBuyer=${serializeField(input.sellerConcessionsToBuyer)}`,
-    `repairsCost=${serializeField(input.repairsCost)}`,
-    `renovationCost=${serializeField(input.renovationCost)}`,
-    `isHecm=${input.isHecm === true}`,
-    `hecmInitialBalance=${serializeField(input.hecmInitialBalance)}`,
-    `hecmCurrentRateBps=${serializeField(input.hecmCurrentRateBps)}`,
-    `hecmLifetimeCapBps=${serializeField(input.hecmLifetimeCapBps)}`,
-    `hecmMonthsElapsed=${serializeField(input.hecmMonthsElapsed)}`,
-    `originalPurchasePrice=${serializeField(input.originalPurchasePrice)}`,
-    `capitalImprovements=${serializeField(input.capitalImprovements)}`,
-    `section121Status=${input.section121Status}`,
-    `estimatedCapitalGainsTaxRateBps=${serializeField(input.estimatedCapitalGainsTaxRateBps)}`,
-    `monthlyCarryingCost=${serializeField(input.monthlyCarryingCost)}`,
-    `pctExpectedDom=${serializeField(input.pctExpectedDom)}`,
-    `pctExpectedDiscountPct=${serializeField(input.pctExpectedDiscountPct)}`,
+    `basePrice=${serializeField(effective.basePrice)}`,
+    `manualAdjustedPrice=${serializeField(effective.manualAdjustedPrice)}`,
+    `conditionTier=${effective.conditionTier}`,
+    `listingCommissionRateBps=${serializeField(effective.listingCommissionRateBps)}`,
+    `buyerCommissionRateBps=${serializeField(effective.buyerCommissionRateBps)}`,
+    `escrowRateBps=${serializeField(effective.escrowRateBps)}`,
+    `titleRateBps=${serializeField(effective.titleRateBps)}`,
+    `transferTaxRateBps=${serializeField(effective.transferTaxRateBps)}`,
+    `recordingFees=${serializeField(effective.recordingFees)}`,
+    `homeWarranty=${serializeField(effective.homeWarranty)}`,
+    `annualPropertyTax=${serializeField(effective.annualPropertyTax)}`,
+    `taxDaysElapsed=${serializeField(effective.taxDaysElapsed)}`,
+    `mortgageBalance=${serializeField(effective.mortgageBalance)}`,
+    `mortgageRateBps=${serializeField(effective.mortgageRateBps)}`,
+    `mortgageMonthsRemaining=${serializeField(effective.mortgageMonthsRemaining)}`,
+    `mortgagePayoffMode=${effective.mortgagePayoffMode}`,
+    `hoaPayoff=${serializeField(effective.hoaPayoff)}`,
+    `liensJudgments=${serializeField(effective.liensJudgments)}`,
+    `stagingPhotoCost=${serializeField(effective.stagingPhotoCost)}`,
+    `sellerConcessionsToBuyer=${serializeField(effective.sellerConcessionsToBuyer)}`,
+    `repairsCost=${serializeField(effective.repairsCost)}`,
+    `renovationCost=${serializeField(effective.renovationCost)}`,
+    `isHecm=${effective.isHecm === true}`,
+    `hecmInitialBalance=${serializeField(effective.hecmInitialBalance)}`,
+    `hecmCurrentRateBps=${serializeField(effective.hecmCurrentRateBps)}`,
+    `hecmLifetimeCapBps=${serializeField(effective.hecmLifetimeCapBps)}`,
+    `hecmMonthsElapsed=${serializeField(effective.hecmMonthsElapsed)}`,
+    `originalPurchasePrice=${serializeField(effective.originalPurchasePrice)}`,
+    `capitalImprovements=${serializeField(effective.capitalImprovements)}`,
+    `section121Status=${effective.section121Status}`,
+    `estimatedCapitalGainsTaxRateBps=${serializeField(effective.estimatedCapitalGainsTaxRateBps)}`,
+    `monthlyCarryingCost=${serializeField(effective.monthlyCarryingCost)}`,
+    `pctExpectedDom=${serializeField(effective.pctExpectedDom)}`,
+    `pctExpectedDiscountPct=${serializeField(effective.pctExpectedDiscountPct)}`,
   ];
   return parts.join("|");
 }

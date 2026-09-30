@@ -4,13 +4,13 @@ import { RUN_RECORDS_QUERY_KEY } from "@/hooks/use-run-records";
 import {
   type SellerNetInput,
   calculateSellerNetWaterfall,
+  deriveEffectiveInput,
   defaultAssumption,
   unknownField,
   userProvided,
 } from "@/lib/seller-net";
 import {
   SellerNetProvider,
-  deriveEffectiveInput,
   useSellerNet,
 } from "@/state/seller-net-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -87,8 +87,8 @@ function completeInput(): SellerNetInput {
     taxDaysElapsed: userProvided(0),
     mortgageBalance: userProvided(300_000),
     // Non-zero rate/months in VERIFIED_PAYOFF mode: the calculator ignores
-    // them, so the snapshot must store the EFFECTIVE values (0/0), not these
-    // raw drafts. This is what distinguishes `effectiveInput` from `input`.
+    // them, so the snapshot must store them as inactive/UNKNOWN rather than
+    // inventing literal zero values.
     mortgageRateBps: userProvided(650),
     mortgageMonthsRemaining: userProvided(24),
     mortgagePayoffMode: "VERIFIED_PAYOFF",
@@ -168,9 +168,8 @@ describe("save run snapshot", () => {
   it("submits effective inputs that replay to identical outputs", async () => {
     const user = userEvent.setup();
     const input = completeInput();
-    // The dialog snapshots the EFFECTIVE inputs (VERIFIED_PAYOFF normalizes the
-    // unused rate/months to 0), so the expected hash is over that normalized
-    // input, not the raw draft.
+    // The dialog snapshots the branch-effective input. VERIFIED_PAYOFF removes
+    // unused rate/month values from identity rather than treating them as zero.
     const effective = deriveEffectiveInput(input);
     const expected = calculateSellerNetWaterfall(effective);
     mockActor.saveRunRecord.mockResolvedValue({
@@ -194,10 +193,10 @@ describe("save run snapshot", () => {
     // The stored inputs are exactly the effective inputs the calculator used,
     // so replaying them reproduces identical outputs.
     const stored = JSON.parse(submitted.effectiveInputsJson) as SellerNetInput;
-    // The unused VERIFIED_PAYOFF rate/months are normalized to 0 in the
-    // snapshot, so replaying it reproduces the same hash the dialog submitted.
-    expect(stored.mortgageRateBps.value).toBe(0);
-    expect(stored.mortgageMonthsRemaining.value).toBe(0);
+    // Inactive VERIFIED_PAYOFF rate/months are UNKNOWN in the effective
+    // snapshot, so replaying it reproduces the same hash without invented data.
+    expect(stored.mortgageRateBps).toEqual(unknownField());
+    expect(stored.mortgageMonthsRemaining).toEqual(unknownField());
     const replayed = calculateSellerNetWaterfall(stored);
     expect(replayed.output).toEqual(expected.output);
     expect(replayed.inputHash).toBe(submitted.inputHash);

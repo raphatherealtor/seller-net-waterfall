@@ -10,12 +10,20 @@
 
 import {
   CALCULATOR_VERSION,
+  CONDITION_TIERS,
+  MORTGAGE_PAYOFF_MODES,
   PROFESSIONAL_REVIEW_DOMAINS,
   PROVENANCE_STATES,
   SCENARIO_DEFAULT_SPREAD,
+  SECTION_121_STATUSES,
   SELLER_NET_CONFIG,
   calculateSellerNetWaterfall,
-  computeScenarios,
+  calculateSellerNetWaterfallStrict,
+  deriveEffectiveInput,
+  computeScenariosStrict,
+  computeScenariosAtTargetsStrict,
+  isSellerNetInputShape,
+  isSellerNetOutputShape,
   validateInput,
 } from "@/lib/seller-net";
 import type {
@@ -192,11 +200,76 @@ export interface McpService {
 // Static descriptors
 // ─────────────────────────────────────────────────────────────────────────────
 
+const PROVENANCED_NUMBER_SCHEMA: McpJsonSchema = {
+  type: "object",
+  properties: {
+    value: {
+      type: ["number", "null"],
+      description: "Numeric value, or null when provenance is UNKNOWN.",
+    },
+    provenance: {
+      type: "string",
+      enum: PROVENANCE_STATES,
+    },
+  },
+  required: ["value", "provenance"],
+  additionalProperties: false,
+};
+
+const PROVENANCED_FIELDS = [
+  "basePrice",
+  "manualAdjustedPrice",
+  "listingCommissionRateBps",
+  "buyerCommissionRateBps",
+  "escrowRateBps",
+  "titleRateBps",
+  "transferTaxRateBps",
+  "recordingFees",
+  "homeWarranty",
+  "annualPropertyTax",
+  "taxDaysElapsed",
+  "mortgageBalance",
+  "mortgageRateBps",
+  "mortgageMonthsRemaining",
+  "hoaPayoff",
+  "liensJudgments",
+  "stagingPhotoCost",
+  "sellerConcessionsToBuyer",
+  "repairsCost",
+  "renovationCost",
+  "hecmInitialBalance",
+  "hecmCurrentRateBps",
+  "hecmLifetimeCapBps",
+  "hecmMonthsElapsed",
+  "originalPurchasePrice",
+  "capitalImprovements",
+  "estimatedCapitalGainsTaxRateBps",
+  "monthlyCarryingCost",
+  "pctExpectedDom",
+  "pctExpectedDiscountPct",
+] as const;
+
 const INPUT_SCHEMA: McpJsonSchema = {
   type: "object",
   description:
-    "Canonical SellerNetInput. Every field is required; use UNKNOWN.",
-  additionalProperties: true,
+    "Canonical SellerNetInput. UNKNOWN is represented by { value: null, provenance: 'UNKNOWN' }; explicit zero remains numeric 0.",
+  properties: {
+    ...Object.fromEntries(
+      PROVENANCED_FIELDS.map((field) => [field, PROVENANCED_NUMBER_SCHEMA]),
+    ),
+    conditionTier: { type: "string", enum: CONDITION_TIERS },
+    mortgagePayoffMode: { type: "string", enum: MORTGAGE_PAYOFF_MODES },
+    isHecm: { type: "boolean" },
+    section121Status: { type: "string", enum: SECTION_121_STATUSES },
+  },
+  required: [
+    ...PROVENANCED_FIELDS,
+    "conditionTier",
+    "mortgagePayoffMode",
+    "isHecm",
+    "section121Status",
+  ],
+  additionalProperties: false,
 };
 
 const RESULT_SCHEMA: McpJsonSchema = {
@@ -333,7 +406,7 @@ const TOOL_DESCRIPTORS: readonly McpToolDescriptor[] = [
   {
     name: "seller_net.explain_result",
     description:
-      "Structure an existing calculator result into labeled lines. Performs no new math.",
+      "Structure an existing calculator result into labeled lines. Performs no new math. Supplying runId requires seller_net:runs scope.",
     inputSchema: {
       type: "object",
       properties: { result: RESULT_SCHEMA, runId: { type: "string" } },
@@ -443,54 +516,75 @@ function isBoundedJson(value: unknown): boolean {
  * guard only — it never validates financial semantics; the canonical validator
  * owns that.
  */
-function isSellerNetInput(value: unknown): value is SellerNetInput {
-  if (!isRecord(value)) return false;
-  const required = [
-    "basePrice",
-    "manualAdjustedPrice",
-    "conditionTier",
-    "listingCommissionRateBps",
-    "buyerCommissionRateBps",
-    "escrowRateBps",
-    "titleRateBps",
-    "transferTaxRateBps",
-    "recordingFees",
-    "homeWarranty",
-    "annualPropertyTax",
-    "taxDaysElapsed",
-    "mortgageBalance",
-    "mortgageRateBps",
-    "mortgageMonthsRemaining",
-    "mortgagePayoffMode",
-    "hoaPayoff",
-    "liensJudgments",
-    "stagingPhotoCost",
-    "sellerConcessionsToBuyer",
-    "repairsCost",
-    "renovationCost",
-    "isHecm",
-    "hecmInitialBalance",
-    "hecmCurrentRateBps",
-    "hecmLifetimeCapBps",
-    "hecmMonthsElapsed",
-    "originalPurchasePrice",
-    "capitalImprovements",
-    "section121Status",
-    "estimatedCapitalGainsTaxRateBps",
-    "monthlyCarryingCost",
-    "pctExpectedDom",
-    "pctExpectedDiscountPct",
-  ];
-  return required.every((key) => key in value);
+
+
+const MCP_MONEY_FIELDS = [
+  "basePrice",
+  "manualAdjustedPrice",
+  "recordingFees",
+  "homeWarranty",
+  "annualPropertyTax",
+  "mortgageBalance",
+  "hoaPayoff",
+  "liensJudgments",
+  "stagingPhotoCost",
+  "sellerConcessionsToBuyer",
+  "repairsCost",
+  "renovationCost",
+  "hecmInitialBalance",
+  "originalPurchasePrice",
+  "capitalImprovements",
+  "monthlyCarryingCost",
+] as const satisfies readonly (keyof SellerNetInput)[];
+
+const MCP_MONTH_FIELDS = [
+  "mortgageMonthsRemaining",
+  "hecmMonthsElapsed",
+] as const satisfies readonly (keyof SellerNetInput)[];
+
+function assertMcpInputLimits(input: SellerNetInput): void {
+  for (const key of MCP_MONEY_FIELDS) {
+    const value = input[key];
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      "value" in value &&
+      typeof value.value === "number" &&
+      value.value > MCP_LIMITS.maxMoney
+    ) {
+      throw mcpError(
+        "OUT_OF_RANGE",
+        `${key} must not exceed ${MCP_LIMITS.maxMoney}.`,
+      );
+    }
+  }
+
+  for (const key of MCP_MONTH_FIELDS) {
+    const value = input[key];
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      "value" in value &&
+      typeof value.value === "number" &&
+      value.value > MCP_LIMITS.maxMonths
+    ) {
+      throw mcpError(
+        "OUT_OF_RANGE",
+        `${key} must not exceed ${MCP_LIMITS.maxMonths} months.`,
+      );
+    }
+  }
 }
 
 /** True when a value looks like a canonical SellerNetResult. */
 function isSellerNetResult(value: unknown): value is SellerNetResult {
   if (!isRecord(value)) return false;
   return (
-    isRecord(value.output) &&
+    isSellerNetOutputShape(value.output) &&
     typeof value.inputHash === "string" &&
-    typeof value.calculatorVersion === "string"
+    value.inputHash.length > 0 &&
+    typeof value.calculatorVersion === "string" &&
+    value.calculatorVersion.length > 0
   );
 }
 
@@ -602,7 +696,13 @@ class McpServiceImpl implements McpService {
       const input = this.requireInput(params);
       const spread = this.resolveSpread(params);
       const current = this.runCalculator(input);
-      const comparison = computeScenarios(input, current, spread);
+      const comparison =
+        params.targets !== undefined
+          ? computeScenariosAtTargetsStrict(
+              input,
+              params.targets as [number, number, number],
+            )
+          : computeScenariosStrict(input, current, spread);
       return { comparison, calculatorVersion: CALCULATOR_VERSION };
     });
   }
@@ -634,16 +734,17 @@ class McpServiceImpl implements McpService {
         );
       }
       const input = this.requireInput(params);
+      const effectiveInput = deriveEffectiveInput(input);
 
-      // The exact effective inputs the calculator used, plus its canonical
-      // outputs. No financial value is recomputed here.
-      const result = this.runCalculator(input);
+      // The exact branch-effective inputs the calculator used, plus its
+      // canonical outputs. No financial value is re-derived here.
+      const result = this.runCalculator(effectiveInput);
       const record: RunRecordPayload = {
         runId,
         calculatorVersion: result.calculatorVersion,
         propertyId,
-        effectiveInputs: input,
-        inputProvenance: provenanceOf(input),
+        effectiveInputs: effectiveInput,
+        inputProvenance: provenanceOf(effectiveInput),
         inputHash: result.inputHash,
         outputs: result.output,
         createdAt: new Date(this.now()).toISOString(),
@@ -680,7 +781,10 @@ class McpServiceImpl implements McpService {
       if (!record) {
         throw mcpError("NOT_FOUND", "No run record exists for that id.");
       }
-      return { record };
+      return {
+        record,
+        versionMismatch: record.calculatorVersion !== CALCULATOR_VERSION,
+      };
     });
   }
 
@@ -720,6 +824,7 @@ class McpServiceImpl implements McpService {
         }
         result = params.result;
       } else if (params.runId !== undefined) {
+        this.requireScope(_ctx, SCOPE_RUNS);
         const runId = this.requireRunId(params);
         const record = await this.store.get(_ctx.principal.id, runId);
         if (!record) {
@@ -753,7 +858,8 @@ class McpServiceImpl implements McpService {
       const calculatorAvailable = this.calculatorAvailable();
       const persistenceAvailable = await this.persistenceAvailable();
       return {
-        status: calculatorAvailable ? "ok" : "degraded",
+        status:
+          calculatorAvailable && persistenceAvailable ? "ok" : "degraded",
         schemaVersion: MCP_SCHEMA_VERSION,
         calculatorVersion: CALCULATOR_VERSION,
         calculatorAvailable,
@@ -952,18 +1058,19 @@ class McpServiceImpl implements McpService {
       );
     }
     const input = params.input;
-    if (!isSellerNetInput(input)) {
-      throw mcpError(
-        "INVALID_PARAMS",
-        "`input` is not a structurally valid SellerNetInput.",
-      );
-    }
     if (!isBoundedJson(input)) {
       throw mcpError(
         "OUT_OF_RANGE",
         `Serialized input exceeds ${MCP_LIMITS.maxJsonBytes} bytes.`,
       );
     }
+    if (!isSellerNetInputShape(input)) {
+      throw mcpError(
+        "INVALID_PARAMS",
+        "`input` is not a structurally valid SellerNetInput.",
+      );
+    }
+    assertMcpInputLimits(input);
     return input;
   }
 
@@ -998,6 +1105,12 @@ class McpServiceImpl implements McpService {
             `Each target must be between 0 and ${MCP_LIMITS.maxMoney}.`,
           );
         }
+      }
+      if (params.targets.length !== 3) {
+        throw mcpError(
+          "INVALID_PARAMS",
+          "`targets` must contain exactly three prices: downside, current, and upside.",
+        );
       }
     }
     if (params.spread === undefined) return SCENARIO_DEFAULT_SPREAD;
@@ -1051,7 +1164,7 @@ class McpServiceImpl implements McpService {
     }
     let result: SellerNetResult;
     try {
-      result = calculateSellerNetWaterfall(input);
+      result = calculateSellerNetWaterfallStrict(input);
     } catch {
       throw mcpError(
         "CALCULATION_FAILED",

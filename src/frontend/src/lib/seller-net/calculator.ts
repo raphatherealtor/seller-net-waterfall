@@ -18,20 +18,43 @@ import type {
 } from "./types";
 import { isFrictionModuleActive, isTaxModuleActive } from "./validation";
 
-/** Round to cents, coercing non-finite results to 0. */
+export class SellerNetCalculationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SellerNetCalculationError";
+  }
+}
+
+type CalculationFailureMode = "coerce" | "throw";
+
+/** Round to cents, coercing non-finite results to 0 for preview-safe callers. */
 export function roundMoney(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-/** Guard a computed value so NaN and Infinity never reach outputs or the UI. */
-function finite(value: number): number {
-  return Number.isFinite(value) ? value : 0;
+function roundMoneyWithMode(
+  value: number,
+  failureMode: CalculationFailureMode,
+): number {
+  if (!Number.isFinite(value)) {
+    if (failureMode === "throw") {
+      throw new SellerNetCalculationError(
+        "A financial calculation produced a non-finite value.",
+      );
+    }
+    return 0;
+  }
+  return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
 /** Rate in basis points applied to an amount. */
-function applyBps(amount: number, bps: number): number {
-  return roundMoney((amount * bps) / SELLER_NET_CONFIG.bpsDenominator);
+function applyBps(
+  amount: number,
+  bps: number,
+  round: (value: number) => number,
+): number {
+  return round((amount * bps) / SELLER_NET_CONFIG.bpsDenominator);
 }
 
 /**
@@ -42,7 +65,28 @@ export function calculateSellerNetWaterfall(
   input: SellerNetInput,
   modules: readonly AdjustmentModule[] = [],
 ): SellerNetResult {
+  return calculateSellerNetWaterfallInternal(input, modules, "coerce");
+}
+
+/**
+ * Authoritative calculation path for persistence/API use. It shares the exact
+ * same formulas as the preview calculator, but refuses to turn a failed
+ * computation into a legitimate-looking zero.
+ */
+export function calculateSellerNetWaterfallStrict(
+  input: SellerNetInput,
+  modules: readonly AdjustmentModule[] = [],
+): SellerNetResult {
+  return calculateSellerNetWaterfallInternal(input, modules, "throw");
+}
+
+function calculateSellerNetWaterfallInternal(
+  input: SellerNetInput,
+  modules: readonly AdjustmentModule[],
+  failureMode: CalculationFailureMode,
+): SellerNetResult {
   const cfg = SELLER_NET_CONFIG;
+  const round = (value: number) => roundMoneyWithMode(value, failureMode);
 
   // ── Price ────────────────────────────────────────────────────────────────
   const basePrice = valueOr(input.basePrice, 0);
@@ -53,37 +97,40 @@ export function calculateSellerNetWaterfall(
     ? 0
     : cfg.conditionTierAdjustments[input.conditionTier];
 
-  const baseAdjustedPrice = roundMoney(
+  const baseAdjustedPrice = round(
     hasManualPrice ? manualPrice : basePrice * (1 + conditionAdjustmentPct),
   );
 
   const renovationCost = valueOr(input.renovationCost, 0);
-  const renovationLift = roundMoney(renovationCost * cfg.renovationMultiplier);
-  const grossPrice = roundMoney(baseAdjustedPrice + renovationLift);
+  const renovationLift = round(renovationCost * cfg.renovationMultiplier);
+  const grossPrice = round(baseAdjustedPrice + renovationLift);
 
   // ── Commissions ──────────────────────────────────────────────────────────
   const listingCommission = applyBps(
     grossPrice,
     valueOr(input.listingCommissionRateBps, 0),
+    round,
   );
   const buyerCommission = applyBps(
     grossPrice,
     valueOr(input.buyerCommissionRateBps, 0),
+    round,
   );
-  const totalCommissions = roundMoney(listingCommission + buyerCommission);
+  const totalCommissions = round(listingCommission + buyerCommission);
 
   // ── Closing costs ────────────────────────────────────────────────────────
-  const escrowFee = applyBps(grossPrice, valueOr(input.escrowRateBps, 0));
-  const titleFee = applyBps(grossPrice, valueOr(input.titleRateBps, 0));
+  const escrowFee = applyBps(grossPrice, valueOr(input.escrowRateBps, 0), round);
+  const titleFee = applyBps(grossPrice, valueOr(input.titleRateBps, 0), round);
   const transferTax = applyBps(
     grossPrice,
     valueOr(input.transferTaxRateBps, 0),
+    round,
   );
-  const proratedPropertyTax = roundMoney(
+  const proratedPropertyTax = round(
     (valueOr(input.annualPropertyTax, 0) * valueOr(input.taxDaysElapsed, 0)) /
       cfg.taxYearDays,
   );
-  const totalClosingCosts = roundMoney(
+  const totalClosingCosts = round(
     escrowFee +
       titleFee +
       transferTax +
@@ -117,7 +164,7 @@ export function calculateSellerNetWaterfall(
   const mortgageBalance = valueOr(input.mortgageBalance, 0);
   const interestAccrual =
     !isHecm && input.mortgagePayoffMode === "ESTIMATE"
-      ? roundMoney(
+      ? round(
           (mortgageBalance *
             (valueOr(input.mortgageRateBps, 0) / cfg.bpsDenominator) *
             valueOr(input.mortgageMonthsRemaining, 0)) /
@@ -128,7 +175,10 @@ export function calculateSellerNetWaterfall(
   let hecmAccruedPayoff: number | null = null;
   let hecmBalanceShortfall: number | null = null;
   let hudNonRecourseDeficit: number | null = null;
-  let professionalReviewDomains: readonly ProfessionalReviewDomain[] = [];
+  let professionalReviewDomains: readonly ProfessionalReviewDomain[] = [
+    "ESCROW",
+    "TITLE",
+  ];
 
   if (isHecm) {
     const hecmInitialBalance = valueOr(input.hecmInitialBalance, 0);
@@ -144,30 +194,37 @@ export function calculateSellerNetWaterfall(
     const monthlyRate =
       effectiveRateBps / cfg.bpsDenominator / cfg.hecmMonthsPerYear;
 
-    const accrued = roundMoney(
+    const accrued = round(
       hecmInitialBalance * (1 + monthlyRate) ** hecmMonthsElapsed,
     );
-    // Finite-output guard: never emit NaN / Infinity / overflow.
-    hecmAccruedPayoff =
-      Number.isFinite(accrued) && Math.abs(accrued) <= cfg.hecmMaxAccruedPayoff
-        ? accrued
-        : 0;
+    // Preview mode stays resilient; strict mode refuses to disguise an
+    // overflowed payoff as a legitimate zero.
+    if (Math.abs(accrued) > cfg.hecmMaxAccruedPayoff) {
+      if (failureMode === "throw") {
+        throw new SellerNetCalculationError(
+          "HECM accrued payoff exceeds the supported calculation range.",
+        );
+      }
+      hecmAccruedPayoff = 0;
+    } else {
+      hecmAccruedPayoff = accrued;
+    }
 
-    professionalReviewDomains = ["LENDER"];
+    professionalReviewDomains = [...professionalReviewDomains, "LENDER"];
   }
 
   const mortgagePayoff = isHecm
     ? 0
-    : roundMoney(mortgageBalance + interestAccrual);
+    : round(mortgageBalance + interestAccrual);
 
-  const totalEncumbrances = roundMoney(
+  const totalEncumbrances = round(
     (isHecm ? (hecmAccruedPayoff ?? 0) : mortgagePayoff) +
       valueOr(input.hoaPayoff, 0) +
       valueOr(input.liensJudgments, 0),
   );
 
   // ── Deductions and net ───────────────────────────────────────────────────
-  const totalDeductions = roundMoney(
+  const totalDeductions = round(
     totalEncumbrances +
       totalCommissions +
       totalClosingCosts +
@@ -177,17 +234,17 @@ export function calculateSellerNetWaterfall(
       renovationCost,
   );
 
-  const nominalNet = roundMoney(grossPrice - totalDeductions);
+  const nominalNet = round(grossPrice - totalDeductions);
 
   // The overall transaction shortfall is the same MAX(0, totalDeductions −
   // grossPrice) figure under both names; hudNonRecourseDeficit is the
   // HECM-active label and must never diverge from estimatedSellerShortfall.
-  const transactionShortfall = roundMoney(
+  const transactionShortfall = round(
     Math.max(0, totalDeductions - grossPrice),
   );
 
   if (isHecm && hecmAccruedPayoff !== null) {
-    hecmBalanceShortfall = roundMoney(
+    hecmBalanceShortfall = round(
       Math.max(0, hecmAccruedPayoff - grossPrice),
     );
     hudNonRecourseDeficit = transactionShortfall;
@@ -208,16 +265,17 @@ export function calculateSellerNetWaterfall(
   let section121EligibilityAssumed = false;
 
   if (taxActive && section121Status !== "UNKNOWN") {
-    adjustedBasis = roundMoney(
+    adjustedBasis = round(
       valueOr(input.originalPurchasePrice, 0) +
         valueOr(input.capitalImprovements, 0),
     );
-    capitalGain = roundMoney(Math.max(0, grossPrice - adjustedBasis));
+    capitalGain = round(Math.max(0, grossPrice - adjustedBasis));
     section121Exemption = cfg.section121Exemptions[section121Status];
-    taxableGain = roundMoney(Math.max(0, capitalGain - section121Exemption));
+    taxableGain = round(Math.max(0, capitalGain - section121Exemption));
     estimatedTaxOwed = applyBps(
       taxableGain,
       valueOr(input.estimatedCapitalGainsTaxRateBps, 0),
+      round,
     );
     // Eligibility is assumed only when a Single or Married exclusion is
     // actually applied, never merely because the module is active.
@@ -227,8 +285,8 @@ export function calculateSellerNetWaterfall(
 
   // Estimated tax owed is deliberately excluded from totalDeductions; it only
   // reduces the net and increases the shortfall.
-  const netAfterTax = roundMoney(nominalNet - estimatedTaxOwed);
-  const shortfallAfterTax = roundMoney(
+  const netAfterTax = round(nominalNet - estimatedTaxOwed);
+  const shortfallAfterTax = round(
     Math.max(0, totalDeductions + estimatedTaxOwed - grossPrice),
   );
 
@@ -250,11 +308,11 @@ export function calculateSellerNetWaterfall(
     const pctExpectedDom = valueOr(input.pctExpectedDom, 0);
     const pctExpectedDiscountPct = valueOr(input.pctExpectedDiscountPct, 0);
 
-    carryingLoss = roundMoney(
+    carryingLoss = round(
       (pctExpectedDom / cfg.frictionDaysPerMonth) * monthlyCarryingCost,
     );
-    staleDiscountLoss = roundMoney(grossPrice * pctExpectedDiscountPct);
-    probabilisticTrueNet = roundMoney(
+    staleDiscountLoss = round(grossPrice * pctExpectedDiscountPct);
+    probabilisticTrueNet = round(
       Math.max(0, netAfterTax - carryingLoss - staleDiscountLoss),
     );
   }
@@ -277,7 +335,7 @@ export function calculateSellerNetWaterfall(
     totalEncumbrances,
     totalDeductions,
     nominalNet,
-    estimatedNetProceeds: roundMoney(Math.max(0, netAfterTax)),
+    estimatedNetProceeds: round(Math.max(0, netAfterTax)),
     estimatedSellerShortfall: shortfallAfterTax,
     hecmAccruedPayoff,
     hecmBalanceShortfall,
@@ -304,19 +362,22 @@ export function calculateSellerNetWaterfall(
   }
 
   return {
-    output: sanitizeOutput(output),
+    output: sanitizeOutput(output, failureMode),
     inputHash: computeInputHash(input),
     calculatorVersion: cfg.calculatorVersion,
   };
 }
 
 /** Force every numeric field finite and cent-rounded. */
-function sanitizeOutput(output: SellerNetOutput): SellerNetOutput {
+function sanitizeOutput(
+  output: SellerNetOutput,
+  failureMode: CalculationFailureMode,
+): SellerNetOutput {
   const sanitized = { ...output };
   for (const key of Object.keys(sanitized) as Array<keyof SellerNetOutput>) {
     const value = sanitized[key];
     if (typeof value === "number") {
-      sanitized[key] = roundMoney(finite(value)) as never;
+      sanitized[key] = roundMoneyWithMode(value, failureMode) as never;
     }
   }
   return sanitized;

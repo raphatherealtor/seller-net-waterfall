@@ -1,5 +1,6 @@
 import Map "mo:core/Map";
 import Result "mo:core/Result";
+import Text "mo:core/Text";
 import Types "../types/run-records";
 
 module {
@@ -9,6 +10,9 @@ module {
   public type RunRecordError = Types.RunRecordError;
   public type UserId = Types.UserId;
   public type RunId = Types.RunId;
+
+  let maxIdentifierChars : Nat = 256;
+  let maxJsonChars : Nat = 1_000_000;
 
   /// Structural validation of a submitted snapshot. The backend never inspects
   /// or recomputes financial values; it only rejects snapshots that cannot be
@@ -28,6 +32,27 @@ module {
     };
     if (input.outputsJson == "") {
       return ?"outputsJson must not be empty";
+    };
+    if (Text.size(input.runId) > maxIdentifierChars) {
+      return ?"runId is too long";
+    };
+    if (Text.size(input.propertyId) > maxIdentifierChars) {
+      return ?"propertyId is too long";
+    };
+    if (Text.size(input.calculatorVersion) > maxIdentifierChars) {
+      return ?"calculatorVersion is too long";
+    };
+    if (Text.size(input.inputHash) > maxIdentifierChars) {
+      return ?"inputHash is too long";
+    };
+    if (Text.size(input.effectiveInputsJson) > maxJsonChars) {
+      return ?"effectiveInputsJson is too large";
+    };
+    if (Text.size(input.inputProvenanceJson) > maxJsonChars) {
+      return ?"inputProvenanceJson is too large";
+    };
+    if (Text.size(input.outputsJson) > maxJsonChars) {
+      return ?"outputsJson is too large";
     };
     null;
   };

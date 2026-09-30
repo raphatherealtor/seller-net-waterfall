@@ -6,6 +6,7 @@ import {
   type SellerNetInput,
   calculateSellerNetWaterfall,
   computeScenarios,
+  computeScenariosStrict,
   defaultAssumption,
   unknownField,
   userProvided,
@@ -239,6 +240,35 @@ describe("scenario clamping and containment", () => {
       expect(scenario.available).toBe(false);
       expect(scenario.reason.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("strict authoritative scenarios", () => {
+  it("contains strict calculator overflow as unavailable scenarios instead of zeroed figures", () => {
+    const input = baseInput({
+      isHecm: true,
+      mortgageBalance: userProvided(0),
+      hecmInitialBalance: userProvided(1_000_000_000),
+      hecmCurrentRateBps: userProvided(10_000),
+      hecmLifetimeCapBps: userProvided(0),
+      hecmMonthsElapsed: userProvided(1_200),
+    });
+    const previewCurrent = calculateSellerNetWaterfall(input);
+    const comparison = computeScenariosStrict(input, previewCurrent);
+
+    for (const scenario of comparison.scenarios) {
+      expect(scenario.available).toBe(false);
+      expect(scenario.figures).toBeNull();
+      expect(scenario.reason).toMatch(/calculation failed/i);
+    }
+  });
+
+  it("matches preview scenario figures for ordinary finite inputs", () => {
+    const input = baseInput();
+    const current = calculateSellerNetWaterfall(input);
+    expect(computeScenariosStrict(input, current)).toEqual(
+      computeScenarios(input, current),
+    );
   });
 });
 

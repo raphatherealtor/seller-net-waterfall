@@ -37,12 +37,19 @@ export type {
   ValidationResult,
 } from "./types";
 
-export { calculateSellerNetWaterfall, roundMoney } from "./calculator";
+export {
+  SellerNetCalculationError,
+  calculateSellerNetWaterfall,
+  calculateSellerNetWaterfallStrict,
+  roundMoney,
+} from "./calculator";
 
 export {
   isCalculable,
   isFrictionModuleActive,
   isTaxModuleActive,
+  isSellerNetInputShape,
+  isSellerNetOutputShape,
   validateInput,
 } from "./validation";
 
@@ -58,6 +65,7 @@ export {
   verifiedPayoff,
 } from "./provenance";
 
+export { deriveEffectiveInput } from "./effective-input";
 export { computeInputHash, hashString, serializeInput } from "./hash";
 
 export {
@@ -65,6 +73,9 @@ export {
   SCENARIO_KEYS,
   SCENARIO_LABELS,
   computeScenarios,
+  computeScenariosStrict,
+  computeScenariosAtTargets,
+  computeScenariosAtTargetsStrict,
 } from "./scenarios";
 export type {
   ScenarioComparison,

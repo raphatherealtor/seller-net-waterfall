@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { RUN_RECORDS_QUERY_KEY } from "@/hooks/use-run-records";
 import { formatMoneyWhole } from "@/lib/format";
-import { computeInputHash } from "@/lib/seller-net";
+import { calculateSellerNetWaterfallStrict } from "@/lib/seller-net";
 import { useSellerNet } from "@/state/seller-net-context";
 import { useActor } from "@caffeineai/core-infrastructure";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -40,7 +40,8 @@ export function SaveRunDialog({ open, onOpenChange }: SaveRunDialogProps) {
   const mutation = useMutation({
     mutationFn: async () => {
       if (!actor) throw new Error("Backend is not ready");
-      const inputHash = computeInputHash(effectiveInput);
+      const strictResult = calculateSellerNetWaterfallStrict(effectiveInput);
+      const inputHash = strictResult.inputHash;
       const runId = `${inputHash}-${Date.now().toString(36)}`;
       const provenance = Object.fromEntries(
         Object.entries(effectiveInput)
@@ -55,11 +56,11 @@ export function SaveRunDialog({ open, onOpenChange }: SaveRunDialogProps) {
       return actor.saveRunRecord({
         runId,
         propertyId: propertyId.trim(),
-        calculatorVersion,
+        calculatorVersion: strictResult.calculatorVersion,
         inputHash,
         effectiveInputsJson: JSON.stringify(effectiveInput),
         inputProvenanceJson: JSON.stringify(provenance),
-        outputsJson: JSON.stringify(result.output),
+        outputsJson: JSON.stringify(strictResult.output),
       });
     },
     onSuccess: (response) => {
@@ -120,7 +121,7 @@ export function SaveRunDialog({ open, onOpenChange }: SaveRunDialogProps) {
           <div className="flex items-baseline justify-between gap-3">
             <dt className="text-muted-foreground">Input hash</dt>
             <dd className="font-money text-[11px] text-foreground">
-              {computeInputHash(effectiveInput)}
+              {result.inputHash}
             </dd>
           </div>
           <div className="flex items-baseline justify-between gap-3">

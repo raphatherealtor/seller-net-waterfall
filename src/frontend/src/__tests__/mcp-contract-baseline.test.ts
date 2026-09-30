@@ -14,6 +14,7 @@ import {
   SCOPE_READ,
   SCOPE_RUNS,
   anonymousAuthContext,
+  invalidCredentialsContext,
   hasScope,
   mcpError,
   resolveAuthContext,
@@ -40,15 +41,15 @@ import { describe, expect, it, vi } from "vitest";
 
 describe("version separation", () => {
   it("keeps the MCP schema version independent of the calculator version", () => {
-    expect(MCP_SCHEMA_VERSION).toBe("seller_net.mcp.v1");
-    expect(CALCULATOR_VERSION).toBe("SELLER_NET_WATERFALL v1.3.0");
+    expect(MCP_SCHEMA_VERSION).toBe("seller_net.mcp.v2");
+    expect(CALCULATOR_VERSION).toBe("SELLER_NET_WATERFALL v1.4.0");
     expect(MCP_SCHEMA_VERSION).not.toBe(CALCULATOR_VERSION);
   });
 
   it("pins the protocol, server name, and server version", () => {
     expect(MCP_PROTOCOL_VERSION).toBe("2024-11-05");
     expect(MCP_SERVER_NAME).toBe("seller-net-mcp");
-    expect(MCP_SERVER_VERSION).toBe("1.0.0");
+    expect(MCP_SERVER_VERSION).toBe("1.1.0");
   });
 });
 
@@ -170,12 +171,12 @@ describe("auth scopes and context resolution", () => {
     expect(verifier.verify).not.toHaveBeenCalled();
   });
 
-  it("falls back to the anonymous context when verification fails", async () => {
+  it("preserves rejected credentials as a distinct scope-free context", async () => {
     const verifier: McpTokenVerifier = {
       verify: vi.fn(async () => null),
     };
     await expect(resolveAuthContext("bad-token", verifier)).resolves.toBe(
-      anonymousAuthContext,
+      invalidCredentialsContext,
     );
     expect(verifier.verify).toHaveBeenCalledWith("bad-token");
   });

@@ -8,9 +8,17 @@
 
 import { SELLER_NET_CONFIG } from "./config";
 import { fieldValue, isUnknown } from "./provenance";
+import {
+  CONDITION_TIERS,
+  MORTGAGE_PAYOFF_MODES,
+  PROFESSIONAL_REVIEW_DOMAINS,
+  PROVENANCE_STATES,
+  SECTION_121_STATUSES,
+} from "./types";
 import type {
   ProvenancedNumber,
   SellerNetInput,
+  SellerNetOutput,
   ValidationIssue,
   ValidationResult,
 } from "./types";
@@ -173,6 +181,196 @@ function readField(
   return null;
 }
 
+const ALL_PROVENANCED_FIELDS: ReadonlyArray<keyof SellerNetInput> = [
+  "basePrice",
+  "manualAdjustedPrice",
+  "listingCommissionRateBps",
+  "buyerCommissionRateBps",
+  "escrowRateBps",
+  "titleRateBps",
+  "transferTaxRateBps",
+  "recordingFees",
+  "homeWarranty",
+  "annualPropertyTax",
+  "taxDaysElapsed",
+  "mortgageBalance",
+  "mortgageRateBps",
+  "mortgageMonthsRemaining",
+  "hoaPayoff",
+  "liensJudgments",
+  "stagingPhotoCost",
+  "sellerConcessionsToBuyer",
+  "repairsCost",
+  "renovationCost",
+  "hecmInitialBalance",
+  "hecmCurrentRateBps",
+  "hecmLifetimeCapBps",
+  "hecmMonthsElapsed",
+  "originalPurchasePrice",
+  "capitalImprovements",
+  "estimatedCapitalGainsTaxRateBps",
+  "monthlyCarryingCost",
+  "pctExpectedDom",
+  "pctExpectedDiscountPct",
+];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isProvenancedNumberShape(value: unknown): value is ProvenancedNumber {
+  if (!isRecord(value)) return false;
+  const keys = Object.keys(value);
+  if (
+    keys.some((key) => key !== "value" && key !== "provenance") ||
+    !("value" in value) ||
+    !("provenance" in value)
+  ) {
+    return false;
+  }
+  const rawValue = value.value;
+  if (
+    rawValue !== null &&
+    (typeof rawValue !== "number" || !Number.isFinite(rawValue))
+  ) {
+    return false;
+  }
+  return (
+    typeof value.provenance === "string" &&
+    (PROVENANCE_STATES as readonly string[]).includes(value.provenance)
+  );
+}
+
+/**
+ * Strict runtime shape guard for persisted/external SellerNetInput payloads.
+ * This does not replace semantic validation; it prevents malformed objects from
+ * being cast into the canonical calculator contract.
+ */
+export function isSellerNetInputShape(value: unknown): value is SellerNetInput {
+  if (!isRecord(value)) return false;
+
+  const allowed = new Set<string>([
+    ...ALL_PROVENANCED_FIELDS,
+    "conditionTier",
+    "mortgagePayoffMode",
+    "isHecm",
+    "section121Status",
+  ]);
+  if (Object.keys(value).some((key) => !allowed.has(key))) return false;
+
+  for (const key of ALL_PROVENANCED_FIELDS) {
+    if (!(key in value) || !isProvenancedNumberShape(value[key])) return false;
+  }
+
+  return (
+    typeof value.conditionTier === "string" &&
+    (CONDITION_TIERS as readonly string[]).includes(value.conditionTier) &&
+    typeof value.mortgagePayoffMode === "string" &&
+    (MORTGAGE_PAYOFF_MODES as readonly string[]).includes(
+      value.mortgagePayoffMode,
+    ) &&
+    typeof value.isHecm === "boolean" &&
+    typeof value.section121Status === "string" &&
+    (SECTION_121_STATUSES as readonly string[]).includes(
+      value.section121Status,
+    )
+  );
+}
+
+const OUTPUT_NUMBER_FIELDS: ReadonlyArray<keyof SellerNetOutput> = [
+  "baseAdjustedPrice",
+  "conditionAdjustmentPct",
+  "renovationLift",
+  "grossPrice",
+  "listingCommission",
+  "buyerCommission",
+  "totalCommissions",
+  "escrowFee",
+  "titleFee",
+  "transferTax",
+  "proratedPropertyTax",
+  "totalClosingCosts",
+  "interestAccrual",
+  "mortgagePayoff",
+  "totalEncumbrances",
+  "totalDeductions",
+  "nominalNet",
+  "estimatedNetProceeds",
+  "estimatedSellerShortfall",
+  "adjustedBasis",
+  "capitalGain",
+  "section121Exemption",
+  "taxableGain",
+  "estimatedTaxOwed",
+  "carryingLoss",
+  "staleDiscountLoss",
+  "probabilisticTrueNet",
+];
+
+const OUTPUT_NULLABLE_NUMBER_FIELDS: ReadonlyArray<keyof SellerNetOutput> = [
+  "hecmAccruedPayoff",
+  "hecmBalanceShortfall",
+  "hudNonRecourseDeficit",
+];
+
+const OUTPUT_BOOLEAN_FIELDS: ReadonlyArray<keyof SellerNetOutput> = [
+  "taxActive",
+  "section121EligibilityAssumed",
+  "frictionActive",
+];
+
+/** Strict runtime guard for stored/external calculator outputs. */
+export function isSellerNetOutputShape(value: unknown): value is SellerNetOutput {
+  if (!isRecord(value)) return false;
+
+  const allowed = new Set<string>([
+    ...OUTPUT_NUMBER_FIELDS,
+    ...OUTPUT_NULLABLE_NUMBER_FIELDS,
+    ...OUTPUT_BOOLEAN_FIELDS,
+    "professionalReviewDomains",
+  ]);
+  if (Object.keys(value).some((key) => !allowed.has(key))) return false;
+
+  for (const key of OUTPUT_NUMBER_FIELDS) {
+    if (
+      !(key in value) ||
+      typeof value[key] !== "number" ||
+      !Number.isFinite(value[key] as number)
+    ) {
+      return false;
+    }
+  }
+
+  for (const key of OUTPUT_NULLABLE_NUMBER_FIELDS) {
+    if (!(key in value)) return false;
+    const candidate = value[key];
+    if (
+      candidate !== null &&
+      (typeof candidate !== "number" || !Number.isFinite(candidate))
+    ) {
+      return false;
+    }
+  }
+
+  for (const key of OUTPUT_BOOLEAN_FIELDS) {
+    if (!(key in value) || typeof value[key] !== "boolean") return false;
+  }
+
+  const domains = value.professionalReviewDomains;
+  if (
+    !Array.isArray(domains) ||
+    domains.some(
+      (domain) =>
+        typeof domain !== "string" ||
+        !(PROFESSIONAL_REVIEW_DOMAINS as readonly string[]).includes(domain),
+    )
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 /** Validate a full input, returning every issue found. */
 export function validateInput(input: SellerNetInput): ValidationResult {
   const issues: ValidationIssue[] = [];
@@ -268,6 +466,27 @@ export function validateInput(input: SellerNetInput): ValidationResult {
       field: "mortgageMonthsRemaining",
       message: "Months remaining cannot be negative.",
     });
+  }
+
+  // An estimated payoff with a positive balance cannot silently substitute
+  // UNKNOWN rate/month values with zero. VERIFIED_PAYOFF does not use them.
+  const mortgageBalance = fieldValue(input.mortgageBalance);
+  if (
+    !isHecm &&
+    input.mortgagePayoffMode === "ESTIMATE" &&
+    mortgageBalance !== null &&
+    Number.isFinite(mortgageBalance) &&
+    mortgageBalance > 0
+  ) {
+    for (const key of [
+      "mortgageRateBps",
+      "mortgageMonthsRemaining",
+    ] as const) {
+      const field = readField(input, key);
+      if (field && isUnknown(field) && !missingFields.includes(key)) {
+        missingFields.push(key);
+      }
+    }
   }
 
   // ── Optional tax module ──────────────────────────────────────────────────

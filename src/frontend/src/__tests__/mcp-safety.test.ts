@@ -282,6 +282,22 @@ describe("malformed input", () => {
     );
     expectCode(envelope, "INVALID_PARAMS");
   });
+
+  it("rejects an explain_result payload with malformed output fields", async () => {
+    const service = makeService();
+    const envelope = await service.dispatch(
+      readCtx,
+      "seller_net.explain_result",
+      {
+        result: {
+          output: { grossPrice: 500_000 },
+          inputHash: "deadbeef",
+          calculatorVersion: "SELLER_NET_WATERFALL v1.3.0",
+        },
+      },
+    );
+    expectCode(envelope, "INVALID_PARAMS");
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -329,6 +345,28 @@ describe("out-of-range numbers", () => {
     expectCode(envelope, "OUT_OF_RANGE");
   });
 
+  it("returns OUT_OF_RANGE when a money input exceeds the MCP contract limit", async () => {
+    const service = makeService();
+    const envelope = await service.dispatch(readCtx, "seller_net.calculate", {
+      input: baseInput({
+        basePrice: userProvided(MCP_LIMITS.maxMoney + 1),
+      }),
+    });
+    expectCode(envelope, "OUT_OF_RANGE");
+  });
+
+  it("returns OUT_OF_RANGE when an accrual month count exceeds the MCP contract limit", async () => {
+    const service = makeService();
+    const envelope = await service.dispatch(readCtx, "seller_net.calculate", {
+      input: baseInput({
+        mortgagePayoffMode: "ESTIMATE",
+        mortgageRateBps: userProvided(500),
+        mortgageMonthsRemaining: userProvided(MCP_LIMITS.maxMonths + 1),
+      }),
+    });
+    expectCode(envelope, "OUT_OF_RANGE");
+  });
+
   it("returns VALIDATION_FAILED when the canonical validator rejects the input", async () => {
     const service = makeService();
     const envelope = await service.dispatch(readCtx, "seller_net.calculate", {
@@ -365,18 +403,24 @@ describe("scenario count limits", () => {
     expectCode(envelope, "TOO_MANY_SCENARIOS");
   });
 
-  it("accepts exactly the maximum number of scenarios", async () => {
+  it("accepts exactly three explicit scenario targets", async () => {
     const service = makeService();
-    const targets = Array.from(
-      { length: MCP_LIMITS.maxScenarios },
-      (_, index) => 400_000 + index * 1_000,
-    );
     const envelope = await service.dispatch(
       readCtx,
       "seller_net.compare_scenarios",
-      { input: baseInput(), targets },
+      { input: baseInput(), targets: [475_000, 500_000, 525_000] },
     );
     expect(envelope.ok).toBe(true);
+  });
+
+  it("rejects a non-three target array within the global scenario limit", async () => {
+    const service = makeService();
+    const envelope = await service.dispatch(
+      readCtx,
+      "seller_net.compare_scenarios",
+      { input: baseInput(), targets: [475_000, 500_000, 525_000, 550_000] },
+    );
+    expectCode(envelope, "INVALID_PARAMS");
   });
 
   it("returns INVALID_PARAMS when targets is not an array", async () => {
@@ -569,5 +613,81 @@ describe("structured error surface", () => {
     );
     expect(envelope.audit.requestId).toBe("req-fail-1");
     expect(envelope.audit.outcome).toBe("failure");
+  });
+});
+
+
+describe("strict MCP input shape", () => {
+  it("rejects a provenanced field whose value is not numeric/null", async () => {
+    const service = makeService();
+    const malformed = {
+      ...baseInput(),
+      basePrice: { value: "500000", provenance: "USER_PROVIDED" },
+    };
+    const envelope = await service.dispatch(readCtx, "seller_net.calculate", {
+      input: malformed,
+    });
+    expectCode(envelope, "INVALID_PARAMS");
+  });
+
+  it("rejects an unknown provenance state", async () => {
+    const service = makeService();
+    const malformed = {
+      ...baseInput(),
+      basePrice: { value: 500000, provenance: "GUESSED" },
+    };
+    const envelope = await service.dispatch(readCtx, "seller_net.calculate", {
+      input: malformed,
+    });
+    expectCode(envelope, "INVALID_PARAMS");
+  });
+
+  it("rejects unsupported enum values", async () => {
+    const service = makeService();
+    const malformed = { ...baseInput(), conditionTier: "MAGICAL" };
+    const envelope = await service.dispatch(readCtx, "seller_net.calculate", {
+      input: malformed,
+    });
+    expectCode(envelope, "INVALID_PARAMS");
+  });
+
+  it("rejects unexpected top-level input keys", async () => {
+    const service = makeService();
+    const malformed = { ...baseInput(), injected: true };
+    const envelope = await service.dispatch(readCtx, "seller_net.calculate", {
+      input: malformed,
+    });
+    expectCode(envelope, "INVALID_PARAMS");
+  });
+
+  it("advertises concrete SellerNetInput properties in tool discovery", async () => {
+    const service = makeService();
+    const envelope = await service.capabilities(readCtx);
+    const calculate = envelope.result?.tools.find(
+      (tool) => tool.name === "seller_net.calculate",
+    );
+    const input = calculate?.inputSchema.properties?.input;
+    expect(input?.properties?.basePrice).toBeDefined();
+    expect(input?.properties?.conditionTier?.enum).toContain("GOOD");
+    expect(input?.additionalProperties).toBe(false);
+  });
+});
+
+
+describe("authoritative calculation failure", () => {
+  it("returns CALCULATION_FAILED instead of a zeroed result for HECM overflow", async () => {
+    const service = makeService();
+    const input = baseInput({
+      isHecm: true,
+      mortgageBalance: userProvided(0),
+      hecmInitialBalance: userProvided(1_000_000_000),
+      hecmCurrentRateBps: userProvided(10_000),
+      hecmLifetimeCapBps: userProvided(0),
+      hecmMonthsElapsed: userProvided(MCP_LIMITS.maxMonths),
+    });
+    const envelope = await service.dispatch(readCtx, "seller_net.calculate", {
+      input,
+    });
+    expectCode(envelope, "CALCULATION_FAILED");
   });
 });

@@ -19,6 +19,7 @@ import {
   type SellerNetInput,
   calculateSellerNetWaterfall,
   computeScenarios,
+  deriveEffectiveInput,
   defaultAssumption,
   unknownField,
   userProvided,
@@ -510,9 +511,10 @@ describe("run creation, retrieval, and replay", () => {
       input,
     });
     const fetched = await service.getRun(runsCtx, { runId: "run-2" });
-    expect(fetched.result?.record.effectiveInputs).toEqual(input);
+    const effective = deriveEffectiveInput(input);
+    expect(fetched.result?.record.effectiveInputs).toEqual(effective);
     expect(fetched.result?.record.inputHash).toBe(
-      calculateSellerNetWaterfall(input).inputHash,
+      calculateSellerNetWaterfall(effective).inputHash,
     );
   });
 
@@ -644,6 +646,27 @@ describe("health", () => {
     expect(envelope.result?.calculatorAvailable).toBe(true);
     expect(envelope.result?.persistenceAvailable).toBe(true);
   });
+
+  it("reports degraded health when run persistence is unavailable", async () => {
+    const service = createMcpService({
+      store: {
+        async save() {
+          return { ok: false as const, code: "INTERNAL_ERROR" as const };
+        },
+        async get() {
+          throw new Error("persistence unavailable");
+        },
+        async list() {
+          throw new Error("persistence unavailable");
+        },
+      },
+    });
+    const envelope = await service.health(readCtx);
+    expect(envelope.ok).toBe(true);
+    expect(envelope.result?.status).toBe("degraded");
+    expect(envelope.result?.calculatorAvailable).toBe(true);
+    expect(envelope.result?.persistenceAvailable).toBe(false);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -688,10 +711,13 @@ describe("provenance and review domains", () => {
     expect(envelope.result?.professionalReviewDomains).toContain("CPA_TAX");
   });
 
-  it("reports no review domains for a plain calculation", async () => {
+  it("reports ESCROW and TITLE as baseline review domains for a plain calculation", async () => {
     const service = makeService();
     const envelope = await service.calculate(readCtx, { input: baseInput() });
-    expect(envelope.result?.professionalReviewDomains).toEqual([]);
+    expect(envelope.result?.professionalReviewDomains).toEqual([
+      "ESCROW",
+      "TITLE",
+    ]);
   });
 });
 
@@ -746,13 +772,13 @@ describe("declared review domain vocabulary", () => {
     ]);
   });
 
-  it("echoes only the canonical active domains, never inventing ESCROW or TITLE", async () => {
+  it("echoes the canonical baseline and contextual review domains", async () => {
     const service = makeService();
     const envelope = await service.calculate(readCtx, { input: hecmInput() });
     const domains = envelope.result?.professionalReviewDomains ?? [];
+    expect(domains).toContain("ESCROW");
+    expect(domains).toContain("TITLE");
     expect(domains).toContain("LENDER");
-    expect(domains).not.toContain("ESCROW");
-    expect(domains).not.toContain("TITLE");
   });
 });
 
@@ -935,3 +961,88 @@ function estimate(value: number) {
 function verifiedPayoff(value: number) {
   return { value, provenance: "VERIFIED_PAYOFF" as const };
 }
+
+
+describe("explain_result stored-run authorization", () => {
+  it("requires seller_net:runs scope when explanation is loaded by runId", async () => {
+    const store = createMemoryStore();
+    const service = createMcpService({ store });
+    const ownerWithRuns: McpAuthContext = {
+      principal: {
+        id: "principal-shared",
+        anonymous: false,
+        scopes: [SCOPE_READ, SCOPE_RUNS],
+      },
+    };
+    const sameOwnerWithoutRuns: McpAuthContext = {
+      principal: {
+        id: "principal-shared",
+        anonymous: false,
+        scopes: [SCOPE_READ],
+      },
+    };
+
+    const created = await service.createRun(ownerWithRuns, {
+      runId: "run-explain-auth",
+      propertyId: "prop-explain-auth",
+      input: baseInput(),
+    });
+    expect(created.ok).toBe(true);
+
+    const denied = await service.explainResult(sameOwnerWithoutRuns, {
+      runId: "run-explain-auth",
+    });
+    expect(denied.ok).toBe(false);
+    expect(denied.error?.code).toBe("FORBIDDEN");
+
+    const allowed = await service.explainResult(ownerWithRuns, {
+      runId: "run-explain-auth",
+    });
+    expect(allowed.ok).toBe(true);
+  });
+});
+
+
+describe("explicit MCP scenario targets", () => {
+  it("uses the three requested prices instead of silently falling back to spread mode", async () => {
+    const service = makeService();
+    const targets = [410_000, 500_000, 635_000];
+    const envelope = await service.compareScenarios(readCtx, {
+      input: baseInput(),
+      targets,
+    });
+    expect(envelope.ok).toBe(true);
+    const scenarios = envelope.result?.comparison.scenarios ?? [];
+    expect(scenarios.map((scenario) => scenario.requestedPrice)).toEqual(
+      targets,
+    );
+    expect(scenarios[0]?.figures?.grossPrice).toBe(410_000);
+    expect(scenarios[1]?.figures?.grossPrice).toBe(500_000);
+    expect(scenarios[2]?.figures?.grossPrice).toBe(635_000);
+  });
+});
+
+
+describe("stored-run calculator version metadata", () => {
+  it("flags a saved run created by a different calculator version", async () => {
+    const store = createMemoryStore();
+    const input = baseInput();
+    const canonical = calculateSellerNetWaterfall(input);
+    await store.save("principal-runs", {
+      runId: "old-version-run",
+      calculatorVersion: "SELLER_NET_WATERFALL v0.9.0",
+      propertyId: "prop-old-version",
+      effectiveInputs: input,
+      inputProvenance: {},
+      inputHash: canonical.inputHash,
+      outputs: canonical.output,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    });
+    const service = createMcpService({ store });
+    const envelope = await service.getRun(runsCtx, {
+      runId: "old-version-run",
+    });
+    expect(envelope.ok).toBe(true);
+    expect(envelope.result?.versionMismatch).toBe(true);
+  });
+});

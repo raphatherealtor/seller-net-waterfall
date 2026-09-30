@@ -13,7 +13,10 @@
  * to that minimum with a clear reason — the requested target is never faked.
  */
 
-import { calculateSellerNetWaterfall } from "./calculator";
+import {
+  calculateSellerNetWaterfall,
+  calculateSellerNetWaterfallStrict,
+} from "./calculator";
 import { userProvided } from "./provenance";
 import type { SellerNetInput, SellerNetOutput, SellerNetResult } from "./types";
 import { validateInput } from "./validation";
@@ -162,10 +165,13 @@ function unavailable(
  * non-finite result is contained here and returned as an unavailable scenario —
  * it never propagates out of `computeScenarios`.
  */
+type ScenarioCalculator = (input: SellerNetInput) => SellerNetResult;
+
 function computeScenario(
   key: ScenarioKey,
   input: SellerNetInput,
   requestedPrice: number,
+  calculator: ScenarioCalculator,
 ): ScenarioResult {
   if (!Number.isFinite(requestedPrice) || requestedPrice <= 0) {
     return unavailable(
@@ -189,7 +195,7 @@ function computeScenario(
 
   let result: SellerNetResult;
   try {
-    result = calculateSellerNetWaterfall(scenarioInput);
+    result = calculator(scenarioInput);
   } catch {
     return unavailable(
       key,
@@ -228,29 +234,11 @@ function computeScenario(
  * per scenario. The Current scenario always uses the current gross price, so it
  * is the delta baseline and is never affected by a failing Downside or Upside.
  */
-export function computeScenarios(
-  input: SellerNetInput,
-  currentResult: SellerNetResult,
-  spread: number = SCENARIO_DEFAULT_SPREAD,
-): ScenarioComparison {
-  const base = currentGrossPrice(currentResult);
-  const effectiveSpread =
-    Number.isFinite(spread) && spread >= 0 ? spread : SCENARIO_DEFAULT_SPREAD;
+function withDeltas(scenarios: ScenarioResult[]): ScenarioResult[] {
+  const currentNet = scenarios.find((scenario) => scenario.key === "current")
+    ?.figures?.estimatedNetProceeds;
 
-  const targets: Record<ScenarioKey, number> = {
-    downside: base - effectiveSpread,
-    current: base,
-    upside: base + effectiveSpread,
-  };
-
-  const scenarios = SCENARIO_KEYS.map((key) =>
-    computeScenario(key, input, targets[key]),
-  );
-
-  const currentNet = scenarios.find((s) => s.key === "current")?.figures
-    ?.estimatedNetProceeds;
-
-  const withDeltas = scenarios.map((scenario) => {
+  return scenarios.map((scenario) => {
     if (
       !scenario.available ||
       scenario.figures === null ||
@@ -263,6 +251,115 @@ export function computeScenarios(
       deltaVsCurrent: scenario.figures.estimatedNetProceeds - currentNet,
     };
   });
+}
 
-  return { spread: effectiveSpread, scenarios: withDeltas };
+function computeScenariosWithCalculator(
+  input: SellerNetInput,
+  currentResult: SellerNetResult,
+  spread: number,
+  calculator: ScenarioCalculator,
+): ScenarioComparison {
+  const base = currentGrossPrice(currentResult);
+  const effectiveSpread =
+    Number.isFinite(spread) && spread >= 0 ? spread : SCENARIO_DEFAULT_SPREAD;
+
+  const targets: Record<ScenarioKey, number> = {
+    downside: base - effectiveSpread,
+    current: base,
+    upside: base + effectiveSpread,
+  };
+
+  const scenarios = SCENARIO_KEYS.map((key) =>
+    computeScenario(key, input, targets[key], calculator),
+  );
+
+  return { spread: effectiveSpread, scenarios: withDeltas(scenarios) };
+}
+
+export function computeScenarios(
+  input: SellerNetInput,
+  currentResult: SellerNetResult,
+  spread: number = SCENARIO_DEFAULT_SPREAD,
+): ScenarioComparison {
+  return computeScenariosWithCalculator(
+    input,
+    currentResult,
+    spread,
+    calculateSellerNetWaterfall,
+  );
+}
+
+/**
+ * Authoritative scenario path: same scenario logic, strict canonical calculator.
+ * Failed/non-finite scenario calculations are contained as unavailable scenarios.
+ */
+export function computeScenariosStrict(
+  input: SellerNetInput,
+  currentResult: SellerNetResult,
+  spread: number = SCENARIO_DEFAULT_SPREAD,
+): ScenarioComparison {
+  return computeScenariosWithCalculator(
+    input,
+    currentResult,
+    spread,
+    calculateSellerNetWaterfallStrict,
+  );
+}
+
+
+/**
+ * Compute the fixed Downside / Current / Upside positions at three explicit
+ * requested prices. This is primarily used by external capability adapters
+ * such as MCP. Each price still runs through computeScenario(), which delegates
+ * every financial figure to the canonical calculator.
+ */
+function computeScenariosAtTargetsWithCalculator(
+  input: SellerNetInput,
+  targets: readonly [number, number, number],
+  calculator: ScenarioCalculator,
+): ScenarioComparison {
+  const requested: Record<ScenarioKey, number> = {
+    downside: targets[0],
+    current: targets[1],
+    upside: targets[2],
+  };
+
+  const scenarios = SCENARIO_KEYS.map((key) =>
+    computeScenario(key, input, requested[key], calculator),
+  );
+
+  const downsideDistance = Math.abs(targets[1] - targets[0]);
+  const upsideDistance = Math.abs(targets[2] - targets[1]);
+  const symmetric =
+    Number.isFinite(downsideDistance) &&
+    Number.isFinite(upsideDistance) &&
+    Math.abs(downsideDistance - upsideDistance) <= 0.005;
+
+  return {
+    spread: symmetric ? downsideDistance : 0,
+    scenarios: withDeltas(scenarios),
+  };
+}
+
+export function computeScenariosAtTargets(
+  input: SellerNetInput,
+  targets: readonly [number, number, number],
+): ScenarioComparison {
+  return computeScenariosAtTargetsWithCalculator(
+    input,
+    targets,
+    calculateSellerNetWaterfall,
+  );
+}
+
+/** Explicit-target counterpart to computeScenariosStrict(). */
+export function computeScenariosAtTargetsStrict(
+  input: SellerNetInput,
+  targets: readonly [number, number, number],
+): ScenarioComparison {
+  return computeScenariosAtTargetsWithCalculator(
+    input,
+    targets,
+    calculateSellerNetWaterfallStrict,
+  );
 }

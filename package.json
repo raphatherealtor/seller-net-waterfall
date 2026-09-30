@@ -1,6 +1,7 @@
 {
   "name": "@caffeine/template-app",
   "type": "module",
+  "packageManager": "pnpm@9.15.9",
   "engines": {
     "node": ">=16.0.0",
     "pnpm": ">=7.0.0",

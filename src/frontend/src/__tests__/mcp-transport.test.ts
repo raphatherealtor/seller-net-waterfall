@@ -195,6 +195,37 @@ describe("initialize", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// notifications
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("notifications", () => {
+  it("acknowledges notifications/initialized without a JSON-RPC response", async () => {
+    const { transport } = makeTransport();
+    const response = await transport.handle(
+      post({
+        jsonrpc: "2.0",
+        method: "notifications/initialized",
+        params: {},
+      }),
+    );
+    expect(response.status).toBe(202);
+    expect(response.body).toBe("");
+  });
+
+  it("never returns a JSON-RPC error body for an unknown notification", async () => {
+    const { transport } = makeTransport();
+    const response = await transport.handle(
+      post({
+        jsonrpc: "2.0",
+        method: "notifications/unknown",
+      }),
+    );
+    expect(response.status).toBe(202);
+    expect(response.body).toBe("");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ping
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -292,6 +323,27 @@ describe("tools/call", () => {
     const body = parseBody(response);
     const error = body.error as { data: { code: string } };
     expect(error.data.code).toBe("UNAUTHORIZED");
+  });
+
+  it("returns FORBIDDEN when a protected call presents an invalid bearer token", async () => {
+    const { transport } = makeTransport();
+    const response = await transport.handle(
+      post(
+        {
+          jsonrpc: "2.0",
+          id: "invalid-token",
+          method: "tools/call",
+          params: {
+            name: "seller_net.create_run",
+            arguments: { runId: "r1", propertyId: "p1", input: baseInput() },
+          },
+        },
+        "bad-token",
+      ),
+    );
+    const body = parseBody(response);
+    const error = body.error as { data: { code: string } };
+    expect(error.data.code).toBe("FORBIDDEN");
   });
 
   it("dispatches a protected tool when a valid bearer token is presented", async () => {
@@ -527,7 +579,7 @@ describe("transport isolation", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("auth context resolution", () => {
-  it("falls back to anonymous when the token is invalid", async () => {
+  it("treats an invalid token as forbidden rather than anonymous", async () => {
     const { transport, verifier } = makeTransport();
     const response = await transport.handle(
       post(
@@ -546,7 +598,7 @@ describe("auth context resolution", () => {
     expect(verifier.verify).toHaveBeenCalledWith("bad-token");
     const body = parseBody(response);
     const error = body.error as { data: { code: string } };
-    expect(error.data.code).toBe("UNAUTHORIZED");
+    expect(error.data.code).toBe("FORBIDDEN");
   });
 
   it("does not call the verifier when no token is present", async () => {

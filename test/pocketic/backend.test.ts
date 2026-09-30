@@ -96,6 +96,14 @@ it("rejects a structurally invalid snapshot", async () => {
   expect(result).toMatchObject({ err: { invalidInput: expect.any(String) } });
 });
 
+it("rejects oversized snapshot identifiers", async () => {
+  actor.setIdentity(alice);
+  const result = await actor.saveRunRecord({
+    ...snapshot("x".repeat(257), "PID 1003B"),
+  });
+  expect(result).toMatchObject({ err: { invalidInput: expect.any(String) } });
+});
+
 it("deletes a run record and reports a missing one", async () => {
   actor.setIdentity(alice);
   await actor.saveRunRecord(snapshot("run-delete", "PID 1004"));

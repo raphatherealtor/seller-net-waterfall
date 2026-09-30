@@ -10,6 +10,7 @@ import {
   type ValidationResult,
   calculateSellerNetWaterfall,
   defaultAssumption,
+  deriveEffectiveInput,
   isCalculable,
   unknownField,
   validateInput,
@@ -94,26 +95,6 @@ export function parseDraft(raw: string): number | null {
   if (trimmed === "") return null;
   const parsed = Number(trimmed);
   return Number.isFinite(parsed) ? parsed : null;
-}
-
-/**
- * Derive the EXACT effective inputs the calculator uses, so a saved snapshot
- * replays to identical outputs.
- *
- * In VERIFIED_PAYOFF mode the calculator ignores mortgageRateBps and
- * mortgageMonthsRemaining entirely, so the snapshot stores the effective payoff
- * values (rate 0, months 0) rather than unused raw inputs. The calculator's
- * public signature is unchanged — this only normalizes what gets persisted.
- */
-export function deriveEffectiveInput(input: SellerNetInput): SellerNetInput {
-  if (input.isHecm === true || input.mortgagePayoffMode !== "VERIFIED_PAYOFF") {
-    return input;
-  }
-  return {
-    ...input,
-    mortgageRateBps: { value: 0, provenance: "USER_PROVIDED" },
-    mortgageMonthsRemaining: { value: 0, provenance: "USER_PROVIDED" },
-  };
 }
 
 export interface SellerNetContextValue {

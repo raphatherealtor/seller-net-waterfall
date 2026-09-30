@@ -2,7 +2,8 @@ import { SectionIcon, type SectionIconKey } from "@/components/ui/section-icon";
 import { CALCULATOR_VERSION } from "@/lib/seller-net";
 import { cn } from "@/lib/utils";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Calculator } from "lucide-react";
+import { Calculator, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 
 const NAV_ITEMS: ReadonlyArray<{
   to: string;
@@ -23,6 +24,7 @@ const NAV_ITEMS: ReadonlyArray<{
  * hairline rule so it reads as a distinct zone from the work surface below.
  */
 export function TopNav() {
+  const { resolvedTheme, setTheme } = useTheme();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
@@ -52,7 +54,8 @@ export function TopNav() {
           </span>
         </Link>
 
-        <nav aria-label="Views" className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
+          <nav aria-label="Views" className="flex items-center gap-0.5">
           {NAV_ITEMS.map((item) => {
             const active = item.exact
               ? pathname === item.to
@@ -75,7 +78,22 @@ export function TopNav() {
               </Link>
             );
           })}
-        </nav>
+          </nav>
+          <button
+            type="button"
+            data-ocid="nav.theme_toggle"
+            aria-label={resolvedTheme === "dark" ? "Use light appearance" : "Use dark appearance"}
+            title={resolvedTheme === "dark" ? "Use light appearance" : "Use dark appearance"}
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            className="flex size-7 items-center justify-center rounded-sm text-muted-foreground transition-smooth hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            {resolvedTheme === "dark" ? (
+              <Sun aria-hidden="true" className="size-3.5" />
+            ) : (
+              <Moon aria-hidden="true" className="size-3.5" />
+            )}
+          </button>
+        </div>
       </div>
     </header>
   );
