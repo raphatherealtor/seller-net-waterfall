@@ -18,6 +18,7 @@ import {
   SECTION_121_STATUSES,
   SELLER_NET_CONFIG,
   calculateSellerNetWaterfall,
+  calculateSellerNetWaterfallStrict,
   computeScenarios,
   computeScenariosAtTargets,
   isSellerNetInputShape,
@@ -1098,7 +1099,7 @@ class McpServiceImpl implements McpService {
     }
     let result: SellerNetResult;
     try {
-      result = calculateSellerNetWaterfall(input);
+      result = calculateSellerNetWaterfallStrict(input);
     } catch {
       throw mcpError(
         "CALCULATION_FAILED",
