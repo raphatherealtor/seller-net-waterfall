@@ -6,6 +6,7 @@ import {
   type SellerNetInput,
   calculateSellerNetWaterfall,
   computeInputHash,
+  deriveEffectiveInput,
   defaultAssumption,
   isCalculable,
   roundMoney,
@@ -289,6 +290,62 @@ describe("deterministic replay identity", () => {
     const a = computeInputHash(baseInput());
     const b = computeInputHash(baseInput({ basePrice: userProvided(500_001) }));
     expect(a).not.toBe(b);
+  });
+
+  it("ignores verified-payoff rate/month drafts in run identity", () => {
+    const first = baseInput({
+      mortgagePayoffMode: "VERIFIED_PAYOFF",
+      mortgageRateBps: userProvided(0),
+      mortgageMonthsRemaining: userProvided(0),
+    });
+    const second = baseInput({
+      mortgagePayoffMode: "VERIFIED_PAYOFF",
+      mortgageRateBps: userProvided(975),
+      mortgageMonthsRemaining: userProvided(48),
+    });
+    expect(calculateSellerNetWaterfall(second).output).toEqual(
+      calculateSellerNetWaterfall(first).output,
+    );
+    expect(computeInputHash(second)).toBe(computeInputHash(first));
+  });
+
+  it("keeps estimated-payoff rate/month changes in run identity", () => {
+    const first = baseInput({
+      mortgagePayoffMode: "ESTIMATE",
+      mortgageRateBps: userProvided(500),
+      mortgageMonthsRemaining: userProvided(6),
+    });
+    const second = baseInput({
+      mortgagePayoffMode: "ESTIMATE",
+      mortgageRateBps: userProvided(600),
+      mortgageMonthsRemaining: userProvided(6),
+    });
+    expect(computeInputHash(second)).not.toBe(computeInputHash(first));
+  });
+
+  it("ignores inactive HECM drafts while HECM is off", () => {
+    const first = baseInput();
+    const second = baseInput({
+      hecmInitialBalance: userProvided(400_000),
+      hecmCurrentRateBps: userProvided(500),
+      hecmLifetimeCapBps: userProvided(800),
+      hecmMonthsElapsed: userProvided(24),
+    });
+    expect(computeInputHash(second)).toBe(computeInputHash(first));
+  });
+
+  it("normalizes effective inputs idempotently", () => {
+    const input = baseInput({
+      mortgageRateBps: userProvided(650),
+      mortgageMonthsRemaining: userProvided(24),
+      hecmInitialBalance: userProvided(123_456),
+    });
+    const once = deriveEffectiveInput(input);
+    const twice = deriveEffectiveInput(once);
+    expect(twice).toEqual(once);
+    expect(once.mortgageRateBps).toEqual(unknownField());
+    expect(once.mortgageMonthsRemaining).toEqual(unknownField());
+    expect(once.hecmInitialBalance).toEqual(unknownField());
   });
 });
 
