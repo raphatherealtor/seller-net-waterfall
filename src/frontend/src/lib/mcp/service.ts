@@ -856,7 +856,8 @@ class McpServiceImpl implements McpService {
       const calculatorAvailable = this.calculatorAvailable();
       const persistenceAvailable = await this.persistenceAvailable();
       return {
-        status: calculatorAvailable ? "ok" : "degraded",
+        status:
+          calculatorAvailable && persistenceAvailable ? "ok" : "degraded",
         schemaVersion: MCP_SCHEMA_VERSION,
         calculatorVersion: CALCULATOR_VERSION,
         calculatorAvailable,
