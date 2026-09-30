@@ -38,14 +38,12 @@ export type McpToolName = (typeof MCP_TOOL_NAMES)[number];
 
 /**
  * The full professional review domain vocabulary this MCP layer declares in its
- * contract. This is the discoverable superset of the canonical calculator's
- * `PROFESSIONAL_REVIEW_DOMAINS` (which is frozen at `LENDER` / `CPA_TAX`): the
- * MCP contract also names `ESCROW` and `TITLE`, the two additional licensed
- * domains a seller-net review can require.
+ * contract. It mirrors the canonical seller-net review vocabulary:
+ * ESCROW and TITLE are baseline review domains, while LENDER and CPA_TAX are
+ * activated contextually by HECM and tax calculations.
  *
- * This constant is contract metadata only. It never invents an *active* domain
- * for a result: `calculate`, `compare_scenarios`, and `explain_result` still
- * echo the canonical calculator's `professionalReviewDomains` verbatim.
+ * This constant is discovery metadata only. Result-producing tools still echo
+ * the canonical calculator's `professionalReviewDomains` verbatim.
  */
 export const MCP_PROFESSIONAL_REVIEW_DOMAINS = [
   "ESCROW",
