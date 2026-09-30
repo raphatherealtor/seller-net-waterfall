@@ -27,7 +27,10 @@ vi.mock("@tanstack/react-router", () => ({
       {children}
     </a>
   ),
-  useRouterState: () => ({ location: { pathname: "/" } }),
+  useRouterState: ({ select }: { select?: (state: { location: { pathname: string } }) => unknown }) => {
+    const state = { location: { pathname: "/" } };
+    return select ? select(state) : state;
+  },
 }));
 
 afterEach(() => {
