@@ -22,6 +22,7 @@ import {
   computeScenarios,
   computeScenariosAtTargets,
   isSellerNetInputShape,
+  isSellerNetOutputShape,
   validateInput,
 } from "@/lib/seller-net";
 import type {
@@ -520,9 +521,11 @@ function isBoundedJson(value: unknown): boolean {
 function isSellerNetResult(value: unknown): value is SellerNetResult {
   if (!isRecord(value)) return false;
   return (
-    isRecord(value.output) &&
+    isSellerNetOutputShape(value.output) &&
     typeof value.inputHash === "string" &&
-    typeof value.calculatorVersion === "string"
+    value.inputHash.length > 0 &&
+    typeof value.calculatorVersion === "string" &&
+    value.calculatorVersion.length > 0
   );
 }
 
