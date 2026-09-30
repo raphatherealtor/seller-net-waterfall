@@ -291,7 +291,7 @@ describe("tools/call", () => {
     );
     const body = parseBody(response);
     const error = body.error as { data: { code: string } };
-    expect(error.data.code).toBe("FORBIDDEN");
+    expect(error.data.code).toBe("UNAUTHORIZED");
   });
 
   it("returns FORBIDDEN when a protected call presents an invalid bearer token", async () => {
@@ -567,7 +567,7 @@ describe("auth context resolution", () => {
     expect(verifier.verify).toHaveBeenCalledWith("bad-token");
     const body = parseBody(response);
     const error = body.error as { data: { code: string } };
-    expect(error.data.code).toBe("UNAUTHORIZED");
+    expect(error.data.code).toBe("FORBIDDEN");
   });
 
   it("does not call the verifier when no token is present", async () => {
