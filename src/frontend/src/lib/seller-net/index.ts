@@ -72,7 +72,9 @@ export {
   SCENARIO_KEYS,
   SCENARIO_LABELS,
   computeScenarios,
+  computeScenariosStrict,
   computeScenariosAtTargets,
+  computeScenariosAtTargetsStrict,
 } from "./scenarios";
 export type {
   ScenarioComparison,
