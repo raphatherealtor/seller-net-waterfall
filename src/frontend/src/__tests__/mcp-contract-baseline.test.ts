@@ -41,7 +41,7 @@ import { describe, expect, it, vi } from "vitest";
 
 describe("version separation", () => {
   it("keeps the MCP schema version independent of the calculator version", () => {
-    expect(MCP_SCHEMA_VERSION).toBe("seller_net.mcp.v1");
+    expect(MCP_SCHEMA_VERSION).toBe("seller_net.mcp.v2");
     expect(CALCULATOR_VERSION).toBe("SELLER_NET_WATERFALL v1.3.0");
     expect(MCP_SCHEMA_VERSION).not.toBe(CALCULATOR_VERSION);
   });
@@ -49,7 +49,7 @@ describe("version separation", () => {
   it("pins the protocol, server name, and server version", () => {
     expect(MCP_PROTOCOL_VERSION).toBe("2024-11-05");
     expect(MCP_SERVER_NAME).toBe("seller-net-mcp");
-    expect(MCP_SERVER_VERSION).toBe("1.0.0");
+    expect(MCP_SERVER_VERSION).toBe("1.1.0");
   });
 });
 
