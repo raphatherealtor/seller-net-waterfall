@@ -282,6 +282,22 @@ describe("malformed input", () => {
     );
     expectCode(envelope, "INVALID_PARAMS");
   });
+
+  it("rejects an explain_result payload with malformed output fields", async () => {
+    const service = makeService();
+    const envelope = await service.dispatch(
+      readCtx,
+      "seller_net.explain_result",
+      {
+        result: {
+          output: { grossPrice: 500_000 },
+          inputHash: "deadbeef",
+          calculatorVersion: "SELLER_NET_WATERFALL v1.3.0",
+        },
+      },
+    );
+    expectCode(envelope, "INVALID_PARAMS");
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
