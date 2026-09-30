@@ -291,7 +291,7 @@ describe("tools/call", () => {
     );
     const body = parseBody(response);
     const error = body.error as { data: { code: string } };
-    expect(error.data.code).toBe("UNAUTHORIZED");
+    expect(error.data.code).toBe("FORBIDDEN");
   });
 
   it("returns FORBIDDEN when a protected call presents an invalid bearer token", async () => {
@@ -548,7 +548,7 @@ describe("transport isolation", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("auth context resolution", () => {
-  it("falls back to anonymous when the token is invalid", async () => {
+  it("treats an invalid token as forbidden rather than anonymous", async () => {
     const { transport, verifier } = makeTransport();
     const response = await transport.handle(
       post(
