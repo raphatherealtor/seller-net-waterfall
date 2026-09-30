@@ -628,3 +628,22 @@ describe("strict MCP input shape", () => {
     expect(input?.additionalProperties).toBe(false);
   });
 });
+
+
+describe("authoritative calculation failure", () => {
+  it("returns CALCULATION_FAILED instead of a zeroed result for HECM overflow", async () => {
+    const service = makeService();
+    const input = baseInput({
+      isHecm: true,
+      mortgageBalance: userProvided(0),
+      hecmInitialBalance: userProvided(1_000_000_000),
+      hecmCurrentRateBps: userProvided(10_000),
+      hecmLifetimeCapBps: userProvided(0),
+      hecmMonthsElapsed: userProvided(10_000),
+    });
+    const envelope = await service.dispatch(readCtx, "seller_net.calculate", {
+      input,
+    });
+    expectCode(envelope, "CALCULATION_FAILED");
+  });
+});
