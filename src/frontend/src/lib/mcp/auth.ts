@@ -47,9 +47,15 @@ export const anonymousAuthContext: McpAuthContext = {
   principal: { id: "anonymous", anonymous: true, scopes: [] },
 };
 
+/** Credentials were presented but failed verification. Grants no scopes. */
+export const invalidCredentialsContext: McpAuthContext = {
+  principal: { id: "invalid-credentials", anonymous: false, scopes: [] },
+};
+
 /**
- * Build an auth context from an optional bearer token using a verifier. When no
- * token is present or verification fails, returns the anonymous context.
+ * Build an auth context from an optional bearer token using a verifier. Missing
+ * credentials are anonymous; presented-but-invalid credentials remain distinct
+ * so protected tools can return FORBIDDEN rather than UNAUTHORIZED.
  */
 export async function resolveAuthContext(
   token: string | undefined,
@@ -60,11 +66,11 @@ export async function resolveAuthContext(
   try {
     principal = await verifier.verify(token);
   } catch {
-    // A verifier that throws is treated exactly like one that returns null:
-    // the caller falls back to the anonymous context rather than propagating.
-    return anonymousAuthContext;
+    // A verifier failure must never authenticate the caller, but credentials
+    // were still presented and rejected.
+    return invalidCredentialsContext;
   }
-  if (!principal) return anonymousAuthContext;
+  if (!principal) return invalidCredentialsContext;
   return { principal, bearerToken: token };
 }
 
