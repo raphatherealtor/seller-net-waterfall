@@ -49,6 +49,7 @@ export {
   isFrictionModuleActive,
   isTaxModuleActive,
   isSellerNetInputShape,
+  isSellerNetOutputShape,
   validateInput,
 } from "./validation";
 
