@@ -119,7 +119,7 @@ describe("canonical result envelope", () => {
       hecmAccruedPayoff: null,
       hecmBalanceShortfall: null,
       hudNonRecourseDeficit: null,
-      professionalReviewDomains: [],
+      professionalReviewDomains: ["ESCROW", "TITLE"],
       adjustedBasis: 0,
       capitalGain: 0,
       section121Exemption: 0,
