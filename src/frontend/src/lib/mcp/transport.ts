@@ -23,6 +23,7 @@ import {
   JSONRPC_INTERNAL_ERROR,
   JSONRPC_INVALID_PARAMS,
   JSONRPC_METHOD_NOT_FOUND,
+  isJsonRpcNotification,
   jsonRpcError,
   jsonRpcSuccess,
   parseJsonRpcRequest,
@@ -51,6 +52,7 @@ export const MCP_TRANSPORT_METHODS = [
   "tools/call",
   "resources/list",
   "resources/read",
+  "notifications/initialized",
 ] as const;
 
 export type McpTransportMethod = (typeof MCP_TRANSPORT_METHODS)[number];
@@ -88,7 +90,7 @@ export interface McpTransport {
   handleJsonRpcRequest(
     request: JsonRpcRequest,
     ctx: McpAuthContext,
-  ): Promise<JsonRpcResponse>;
+  ): Promise<JsonRpcResponse | null>;
 }
 
 /** Case-insensitive header lookup. */
@@ -241,7 +243,15 @@ export function createMcpTransport(options: McpTransportOptions): McpTransport {
   async function handleJsonRpcRequest(
     request: JsonRpcRequest,
     ctx: McpAuthContext,
-  ): Promise<JsonRpcResponse> {
+  ): Promise<JsonRpcResponse | null> {
+    // JSON-RPC notifications never receive a JSON-RPC response. In this
+    // stateless legacy adapter we acknowledge them only at the HTTP layer.
+    // No current notification carries a seller-net mutation, so notification
+    // methods are intentionally side-effect free here.
+    if (isJsonRpcNotification(request)) {
+      return null;
+    }
+
     const id: JsonRpcId = request.id ?? null;
     const params = asRecord(request.params);
 
@@ -354,7 +364,7 @@ export function createMcpTransport(options: McpTransportOptions): McpTransport {
     const token = extractBearerToken(request.headers);
     const ctx = await resolveAuthContext(token, verifier);
 
-    let response: JsonRpcResponse;
+    let response: JsonRpcResponse | null;
     try {
       response = await handleJsonRpcRequest(parsed.request, ctx);
     } catch {
@@ -364,6 +374,15 @@ export function createMcpTransport(options: McpTransportOptions): McpTransport {
         "Internal error",
       );
     }
+
+    if (response === null) {
+      return {
+        status: 202,
+        headers: {},
+        body: "",
+      };
+    }
+
     return {
       status: 200,
       headers: jsonHeaders,
