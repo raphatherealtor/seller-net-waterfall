@@ -212,7 +212,7 @@ export interface SellerNetOutput {
    * active, otherwise `null`. Same figure as estimatedSellerShortfall.
    */
   hudNonRecourseDeficit: number | null;
-  /** Domains requiring professional review; empty when HECM is inactive. */
+  /** Baseline ESCROW/TITLE review domains plus contextual LENDER/CPA_TAX. */
   professionalReviewDomains: readonly ProfessionalReviewDomain[];
 
   /**
