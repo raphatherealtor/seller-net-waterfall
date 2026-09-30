@@ -994,16 +994,16 @@ class McpServiceImpl implements McpService {
       );
     }
     const input = params.input;
-    if (!isSellerNetInputShape(input)) {
-      throw mcpError(
-        "INVALID_PARAMS",
-        "`input` is not a structurally valid SellerNetInput.",
-      );
-    }
     if (!isBoundedJson(input)) {
       throw mcpError(
         "OUT_OF_RANGE",
         `Serialized input exceeds ${MCP_LIMITS.maxJsonBytes} bytes.`,
+      );
+    }
+    if (!isSellerNetInputShape(input)) {
+      throw mcpError(
+        "INVALID_PARAMS",
+        "`input` is not a structurally valid SellerNetInput.",
       );
     }
     return input;
