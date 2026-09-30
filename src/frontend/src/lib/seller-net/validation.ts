@@ -11,12 +11,14 @@ import { fieldValue, isUnknown } from "./provenance";
 import {
   CONDITION_TIERS,
   MORTGAGE_PAYOFF_MODES,
+  PROFESSIONAL_REVIEW_DOMAINS,
   PROVENANCE_STATES,
   SECTION_121_STATUSES,
 } from "./types";
 import type {
   ProvenancedNumber,
   SellerNetInput,
+  SellerNetOutput,
   ValidationIssue,
   ValidationResult,
 } from "./types";
@@ -273,6 +275,100 @@ export function isSellerNetInputShape(value: unknown): value is SellerNetInput {
       value.section121Status,
     )
   );
+}
+
+const OUTPUT_NUMBER_FIELDS: ReadonlyArray<keyof SellerNetOutput> = [
+  "baseAdjustedPrice",
+  "conditionAdjustmentPct",
+  "renovationLift",
+  "grossPrice",
+  "listingCommission",
+  "buyerCommission",
+  "totalCommissions",
+  "escrowFee",
+  "titleFee",
+  "transferTax",
+  "proratedPropertyTax",
+  "totalClosingCosts",
+  "interestAccrual",
+  "mortgagePayoff",
+  "totalEncumbrances",
+  "totalDeductions",
+  "nominalNet",
+  "estimatedNetProceeds",
+  "estimatedSellerShortfall",
+  "adjustedBasis",
+  "capitalGain",
+  "section121Exemption",
+  "taxableGain",
+  "estimatedTaxOwed",
+  "carryingLoss",
+  "staleDiscountLoss",
+  "probabilisticTrueNet",
+];
+
+const OUTPUT_NULLABLE_NUMBER_FIELDS: ReadonlyArray<keyof SellerNetOutput> = [
+  "hecmAccruedPayoff",
+  "hecmBalanceShortfall",
+  "hudNonRecourseDeficit",
+];
+
+const OUTPUT_BOOLEAN_FIELDS: ReadonlyArray<keyof SellerNetOutput> = [
+  "taxActive",
+  "section121EligibilityAssumed",
+  "frictionActive",
+];
+
+/** Strict runtime guard for stored/external calculator outputs. */
+export function isSellerNetOutputShape(value: unknown): value is SellerNetOutput {
+  if (!isRecord(value)) return false;
+
+  const allowed = new Set<string>([
+    ...OUTPUT_NUMBER_FIELDS,
+    ...OUTPUT_NULLABLE_NUMBER_FIELDS,
+    ...OUTPUT_BOOLEAN_FIELDS,
+    "professionalReviewDomains",
+  ]);
+  if (Object.keys(value).some((key) => !allowed.has(key))) return false;
+
+  for (const key of OUTPUT_NUMBER_FIELDS) {
+    if (
+      !(key in value) ||
+      typeof value[key] !== "number" ||
+      !Number.isFinite(value[key] as number)
+    ) {
+      return false;
+    }
+  }
+
+  for (const key of OUTPUT_NULLABLE_NUMBER_FIELDS) {
+    if (!(key in value)) return false;
+    const candidate = value[key];
+    if (
+      candidate !== null &&
+      (typeof candidate !== "number" || !Number.isFinite(candidate))
+    ) {
+      return false;
+    }
+  }
+
+  for (const key of OUTPUT_BOOLEAN_FIELDS) {
+    if (!(key in value) || typeof value[key] !== "boolean") return false;
+  }
+
+  const domains = value.professionalReviewDomains;
+  if (
+    !Array.isArray(domains) ||
+    domains.some(
+      (domain) =>
+        typeof domain !== "string" ||
+        !(PROFESSIONAL_REVIEW_DOMAINS as readonly string[]).includes(domain),
+    )
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 /** Validate a full input, returning every issue found. */
